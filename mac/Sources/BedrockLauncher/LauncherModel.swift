@@ -61,6 +61,9 @@ final class LauncherModel: ObservableObject {
     /// Something worth knowing that is not a failure.
     @Published var noticeMessage: String?
     private var installTask: Task<Void, Never>?
+    /// Google Play's current version code, when it is newer than every tested one.
+    @Published private(set) var playHasNewer: Int?
+    private var playLatestCode: Int?
     /// When the last game session ended and how; kept between launches.
     @Published private(set) var lastSession: (ended: Date, exitCode: Int32)?
 
@@ -95,7 +98,9 @@ final class LauncherModel: ObservableObject {
             let remote = try? await URLSession.shared.data(from: TestedVersions.remote)
             guard let self, (remote?.1 as? HTTPURLResponse)?.statusCode == 200 else { return }
             self.tested = TestedVersions.load(remote: remote?.0, bundled: bundled)
+            self.updatePlayBanner()
         }
+        checkGooglePlayVersion()
         refresh()
         if let ended = UserDefaults.standard.object(forKey: "lastSessionEnded") as? Date {
             lastSession = (ended, Int32(UserDefaults.standard.integer(forKey: "lastSessionExitCode")))
@@ -136,6 +141,7 @@ final class LauncherModel: ObservableObject {
                     let email = try await self.googlePlay.signIn(oauthToken: token)
                     UserDefaults.standard.set(email, forKey: "googleEmail")
                     self.googleEmail = email
+                    self.checkGooglePlayVersion()
                     then?()
                 } catch {
                     self.errorMessage = "Google sign-in failed: \(error.localizedDescription)"
@@ -153,6 +159,8 @@ final class LauncherModel: ObservableObject {
         }
         UserDefaults.standard.removeObject(forKey: "googleEmail")
         googleEmail = nil
+        playLatestCode = nil
+        updatePlayBanner()
     }
 
     var isInstalling: Bool { installProgress != nil }
@@ -261,6 +269,23 @@ final class LauncherModel: ObservableObject {
     /// Runs file work away from the main thread.
     nonisolated static func offMain<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
         try await Task.detached(priority: .userInitiated) { try work() }.value
+    }
+
+    /// Asks Google Play for its current version. Failures only mean no banner.
+    func checkGooglePlayVersion() {
+        guard googleEmail != nil else { return }
+        Task {
+            playLatestCode = try? await googlePlay.latestVersionCode()
+            updatePlayBanner()
+        }
+    }
+
+    private func updatePlayBanner() {
+        if let code = playLatestCode, tested.isNewerThanTested(code) {
+            playHasNewer = code
+        } else {
+            playHasNewer = nil
+        }
     }
 
     func deleteVersion(_ version: GameVersion) {

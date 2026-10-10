@@ -38,6 +38,19 @@ struct RootView: View {
                 }
                 .buttonStyle(.plain)
             }
+            if model.playHasNewer != nil {
+                Button {
+                    let name = model.tested.newest?.name ?? "the newest tested one"
+                    model.noticeMessage = "Downloads stay on the newest tested version (\(name)) until the launcher is updated to support the new one. Your installed game keeps working."
+                } label: {
+                    Text("Google Play has a newer Minecraft than this launcher has tested.")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(8)
+                        .background(Theme.red.face)
+                }
+                .buttonStyle(.plain)
+            }
             ZStack {
                 Theme.background
                 switch model.page {
