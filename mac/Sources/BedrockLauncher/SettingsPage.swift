@@ -18,12 +18,40 @@ struct SettingsPage: View {
     }
 
     private var general: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            launcher
+            google
+        }
+    }
+
+    private var google: some View {
+        Panel {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionTitle(text: "Google account")
+                if let email = model.googleEmail {
+                    Text(email.isEmpty ? "Signed in" : "Signed in as \(email)")
+                    Button("SIGN OUT") { model.signOutOfGoogle() }
+                        .buttonStyle(ChunkyButtonStyle())
+                } else {
+                    Text("Signing in is only needed to download the game from Google Play.")
+                        .foregroundStyle(Theme.dimText)
+                    Button(model.isSigningIn ? "SIGNING IN..." : "SIGN IN TO GOOGLE") { model.signInToGoogle() }
+                        .buttonStyle(ChunkyButtonStyle())
+                        .disabled(model.isSigningIn)
+                }
+                Toggle("Keep downloaded APK files", isOn: $model.settings.keepDownloadedAPKs)
+            }
+            .toggleStyle(BlockToggleStyle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var launcher: some View {
         Panel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Launcher")
                 Toggle("Hide the launcher while the game runs", isOn: $model.settings.hideWhilePlaying)
                 Toggle("Check for launcher updates when it opens", isOn: $model.settings.checkForUpdates)
-                Toggle("Keep downloaded APK files", isOn: $model.settings.keepDownloadedAPKs)
                 Toggle("Network debug logging", isOn: $model.settings.networkDebug)
                 Divider().overlay(Theme.outline)
                 Button("OPEN LAUNCHER DATA FOLDER") {

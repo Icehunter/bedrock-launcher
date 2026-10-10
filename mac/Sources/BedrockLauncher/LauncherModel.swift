@@ -49,6 +49,10 @@ final class LauncherModel: ObservableObject {
     @Published private(set) var profileList: [Profile] = []
     @Published var selectedProfileID: UUID
     @Published var updateNotice: UpdateCheck.Release?
+    /// The signed-in Google account, or nil. Signing in is only needed to download.
+    @Published private(set) var googleEmail: String?
+    @Published private(set) var isSigningIn = false
+    let googlePlay: GooglePlay
     /// When the last game session ended and how; kept between launches.
     @Published private(set) var lastSession: (ended: Date, exitCode: Int32)?
 
@@ -75,6 +79,8 @@ final class LauncherModel: ObservableObject {
         } else {
             bundleContents = Bundle.main.bundleURL.appendingPathComponent("Contents", isDirectory: true)
         }
+        googlePlay = GooglePlay(helper: bundleContents.appendingPathComponent("MacOS/bedrock-gplay"), state: paths.google)
+        googleEmail = googlePlay.isSignedIn ? UserDefaults.standard.string(forKey: "googleEmail") ?? "" : nil
         refresh()
         if let ended = UserDefaults.standard.object(forKey: "lastSessionEnded") as? Date {
             lastSession = (ended, Int32(UserDefaults.standard.integer(forKey: "lastSessionExitCode")))
@@ -96,6 +102,42 @@ final class LauncherModel: ObservableObject {
         if panel.runModal() == .OK, let url = panel.url {
             play(extraArguments: ["-ifp", url.path])
         }
+    }
+
+    /// Opens Google's sign-in page and saves the account with the helper.
+    /// `then` runs after a successful sign-in.
+    func signInToGoogle(then: (() -> Void)? = nil) {
+        guard !isSigningIn else { return }
+        isSigningIn = true
+        GoogleSignInWindow.present { [weak self] token in
+            guard let self else { return }
+            guard let token else {
+                self.isSigningIn = false
+                return
+            }
+            Task {
+                defer { self.isSigningIn = false }
+                do {
+                    let email = try await self.googlePlay.signIn(oauthToken: token)
+                    UserDefaults.standard.set(email, forKey: "googleEmail")
+                    self.googleEmail = email
+                    then?()
+                } catch {
+                    self.errorMessage = "Google sign-in failed: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    func signOutOfGoogle() {
+        do {
+            try googlePlay.signOut()
+        } catch {
+            errorMessage = "Could not sign out of Google: \(error.localizedDescription)"
+            return
+        }
+        UserDefaults.standard.removeObject(forKey: "googleEmail")
+        googleEmail = nil
     }
 
     func deleteVersion(_ version: GameVersion) {
