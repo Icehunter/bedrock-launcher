@@ -157,40 +157,12 @@ struct SectionTitle: View {
 /// The block-world scenery behind the Play page. Falls back to the small
 /// pixel-art scene when the large image is missing.
 struct Scenery: View {
-    /// Stops the motion, for example while the game runs.
-    var paused = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    /// Seconds before the motion repeats.
-    static let period: Float = 24
-    static let start = Date()
-
     var body: some View {
         if let image = Bundle.module.image(forResource: "scene-hd") {
-            let still = Image(nsImage: image)
+            Image(nsImage: image)
                 .interpolation(.high)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-            if let mask = Bundle.module.image(forResource: "scene-motion"), !reduceMotion {
-                GeometryReader { geo in
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: paused)) { context in
-                        still
-                            .frame(width: geo.size.width, height: geo.size.height)
-                            .clipped()
-                            .layerEffect(
-                                ShaderLibrary.bundle(.module).sceneMotion(
-                                    .float(Float(context.date.timeIntervalSince(Self.start))),
-                                    .float(Self.period),
-                                    .float2(geo.size),
-                                    .image(Image(nsImage: mask))
-                                ),
-                                maxSampleOffset: CGSize(width: 12, height: 6)
-                            )
-                    }
-                }
-            } else {
-                still
-            }
         } else if let image = Bundle.module.image(forResource: "scene") {
             Image(nsImage: image)
                 .interpolation(.none)
