@@ -36,8 +36,10 @@ on it. Google sign-in is only needed for Download. Settings has the sign out but
 A red bar at the top means Google Play has a newer Minecraft than the launcher is tested with.
 Downloads stay on the newest tested version until the launcher is updated.
 
-The app is not signed with an Apple Developer ID yet. The first time you open it, macOS blocks it:
-open System Settings, go to Privacy & Security, and click Open Anyway next to Bedrock Launcher.
+Download the `.dmg` from the [Releases](https://github.com/Icehunter/bedrock-launcher/releases)
+page, open it and drag Bedrock Launcher to Applications. Releases are signed with a Developer ID
+and notarized by Apple, so macOS opens them without a warning. It needs an Apple Silicon Mac with
+macOS 15 or newer.
 
 ## Getting the source
 

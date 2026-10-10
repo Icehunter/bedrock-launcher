@@ -13,6 +13,9 @@ jobs:
   bundle:
     runs-on: macos-15
     timeout-minutes: 300
+    permissions:
+      # Version tags publish a GitHub Release.
+      contents: write
     env:
       # Version tags and manual runs are signed with the Developer ID and
       # notarized; other pushes are ad-hoc signed.
@@ -129,6 +132,15 @@ jobs:
           name: Bedrock-Launcher
           path: out/Bedrock-Launcher.dmg
           if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          /bin/cp out/Bedrock-Launcher.dmg "out/Bedrock-Launcher-${GITHUB_REF_NAME#v}.dmg"
+          gh release create "$GITHUB_REF_NAME" "out/Bedrock-Launcher-${GITHUB_REF_NAME#v}.dmg" \
+            --verify-tag --title "Bedrock Launcher ${GITHUB_REF_NAME#v}" --generate-notes
 
       - name: Remove signing keychain
         if: always() && env.RELEASE_BUILD == 'true'
