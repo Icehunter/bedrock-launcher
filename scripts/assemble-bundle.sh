@@ -26,6 +26,7 @@ done
 for f in libMoltenVK.dylib MoltenVK_icd.json; do
   place "$OUT/moltenvk/$f" "$C/Frameworks/mvk-angle/$f"
 done
+place "$ROOT/tested-versions.json" "$C/Resources/tested-versions.json"
 place "$OUT/client/gamecontrollerdb.txt" "$C/Resources/mcpelauncher/gamecontrollerdb.txt"
 for f in "$OUT"/client/lib/arm64-v8a/*.so; do
   place "$f" "$C/Resources/mcpelauncher/lib/arm64-v8a/$(basename "$f")"
