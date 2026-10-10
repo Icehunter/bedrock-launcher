@@ -119,12 +119,20 @@ public struct GooglePlay: Sendable {
         process.standardOutput = out
         process.standardError = err
         process.standardInput = input
+        // waitUntilExit can miss the exit when called from a Swift task, so
+        // the exit status comes through the termination handler.
+        let (exits, exitSink) = AsyncStream<Int32>.makeStream()
+        process.terminationHandler = { exitSink.yield($0.terminationStatus); exitSink.finish() }
         try process.run()
         if let stdin {
             input.fileHandleForWriting.write(Data(stdin.utf8))
         }
         try? input.fileHandleForWriting.close()
-        let errText = Task.detached { String(decoding: err.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self) }
+        let errText = Task {
+            var lines: [String] = []
+            for try await line in err.fileHandleForReading.bytes.lines { lines.append(line) }
+            return lines
+        }
 
         try await withTaskCancellationHandler {
             for try await line in out.fileHandleForReading.bytes.lines {
@@ -133,16 +141,17 @@ public struct GooglePlay: Sendable {
         } onCancel: {
             child.process.terminate()
         }
-        process.waitUntilExit()
-        let stderr = await errText.value
+        var status: Int32 = -1
+        for await s in exits { status = s }
+        let stderr = (try? await errText.value) ?? []
         if Task.isCancelled { throw CancellationError() }
-        guard process.terminationStatus != 0 else { return }
+        guard status != 0 else { return }
 
-        let last = stderr.split(separator: "\n").last { $0.hasPrefix("error ") }.map(String.init) ?? ""
-        if process.terminationStatus == 3 {
+        let last = stderr.last { $0.hasPrefix("error ") } ?? ""
+        if status == 3 {
             throw GooglePlayError.signInNeeded(String(last.dropFirst("error auth ".count)))
         }
         let message = String(last.dropFirst("error ".count))
-        throw GooglePlayError.failed(message.isEmpty ? "The Google Play helper stopped (code \(process.terminationStatus))" : message)
+        throw GooglePlayError.failed(message.isEmpty ? "The Google Play helper stopped (code \(status))" : message)
     }
 }

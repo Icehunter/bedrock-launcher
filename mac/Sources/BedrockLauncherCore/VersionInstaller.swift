@@ -83,9 +83,12 @@ public enum VersionInstaller {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
+        // waitUntilExit can miss the exit on some threads; the handler does not.
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
         try process.run()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        exited.wait()
         return (process.terminationStatus, String(decoding: data, as: UTF8.self))
     }
 }

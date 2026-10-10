@@ -16,8 +16,10 @@ enum APKFixture {
         zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
         zip.arguments = ["-qr", file.path, "."]
         zip.currentDirectoryURL = stage
+        let exited = DispatchSemaphore(value: 0)
+        zip.terminationHandler = { _ in exited.signal() }
         try zip.run()
-        zip.waitUntilExit()
+        exited.wait()
         precondition(zip.terminationStatus == 0, "zip failed")
         return file
     }
