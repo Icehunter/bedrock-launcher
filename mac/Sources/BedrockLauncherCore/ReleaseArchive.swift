@@ -27,7 +27,14 @@ public enum ReleaseArchive {
         "Minecraft-\(v.name).\(fileExtension)"
     }
 
-    public static func export(_ v: GameVersion, to file: URL) throws {
+    /// The file the save panel picked, with exactly one `.mcversion` ending.
+    public static func exportFile(_ picked: URL) -> URL {
+        var url = picked
+        while url.pathExtension == fileExtension { url.deletePathExtension() }
+        return url.appendingPathExtension(fileExtension)
+    }
+
+    public static func export(_ v: GameVersion, to file: URL, shouldStop: () -> Bool = { false }) throws {
         let fm = FileManager.default
         let manifest = try AndroidManifest.read(file: v.folder.appendingPathComponent("AndroidManifest.xml"))
         let scratch = try fm.url(for: .itemReplacementDirectory, in: .userDomainMask,
@@ -53,18 +60,25 @@ public enum ReleaseArchive {
         try encoder.encode(Info(name: manifest.versionName, versionCode: manifest.versionCode))
             .write(to: stage.appendingPathComponent("version.json"))
 
+        if shouldStop() { throw CancellationError() }
         let partial = file.appendingPathExtension("partial")
         try? fm.removeItem(at: partial)
         guard try VersionInstaller.run("/usr/bin/ditto", ["-c", "-k", stage.path, partial.path]).status == 0 else {
             try? fm.removeItem(at: partial)
             throw Error.zipFailed
         }
+        if shouldStop() {
+            try? fm.removeItem(at: partial)
+            throw CancellationError()
+        }
         try? fm.removeItem(at: file)
         try fm.moveItem(at: partial, to: file)
     }
 
-    public static func importFile(_ file: URL, versionsFolder: URL) throws -> GameVersion {
-        try VersionInstaller.installStaged(into: versionsFolder) { stage in
+    public static func importFile(_ file: URL, versionsFolder: URL,
+                                  shouldStop: () -> Bool = { false }) throws -> GameVersion {
+        if try VersionInstaller.hasLinks(file) { throw VersionInstaller.Error.unsafeArchive(file.lastPathComponent) }
+        return try VersionInstaller.installStaged(into: versionsFolder, shouldStop: shouldStop) { stage in
             guard try VersionInstaller.run("/usr/bin/ditto", ["-x", "-k", file.path, stage.path]).status == 0 else {
                 throw Error.notAnExport
             }

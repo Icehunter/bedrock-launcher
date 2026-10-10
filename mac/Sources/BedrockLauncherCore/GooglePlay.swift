@@ -84,6 +84,7 @@ public struct GooglePlay: Sendable {
     /// or cancel, `folder` is removed.
     public func download(versionCode: Int, to folder: URL,
                          progress: @escaping @Sendable (Int64, Int64) -> Void) async throws -> [URL] {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         var files: [URL] = []
         var parts: [String: (done: Int64, total: Int64)] = [:]
         do {
@@ -106,6 +107,10 @@ public struct GooglePlay: Sendable {
         return files
     }
 
+    /// Writing to a helper that already quit raises SIGPIPE, which would end
+    /// the launcher. Ignored once, so the write fails with an error instead.
+    private static let ignoreBrokenPipes: Void = { signal(SIGPIPE, SIG_IGN) }()
+
     private final class Child: @unchecked Sendable {
         let process = Process()
     }
@@ -123,9 +128,11 @@ public struct GooglePlay: Sendable {
         // the exit status comes through the termination handler.
         let (exits, exitSink) = AsyncStream<Int32>.makeStream()
         process.terminationHandler = { exitSink.yield($0.terminationStatus); exitSink.finish() }
+        Self.ignoreBrokenPipes
         try process.run()
         if let stdin {
-            input.fileHandleForWriting.write(Data(stdin.utf8))
+            // The helper may quit before reading; that shows in its exit code.
+            try? input.fileHandleForWriting.write(contentsOf: Data(stdin.utf8))
         }
         try? input.fileHandleForWriting.close()
         let errText = Task {

@@ -173,17 +173,23 @@ final class LauncherModel: ObservableObject {
             signInToGoogle { [weak self] in self?.download(entry) }
             return
         }
+        if versions.contains(where: { $0.name == entry.name }) {
+            errorMessage = VersionInstaller.Error.alreadyInstalled(entry.name).errorDescription
+            return
+        }
         let folder = paths.apks.appendingPathComponent(String(entry.versionCode), isDirectory: true)
         let keep = settings.keepDownloadedAPKs
         runInstall(title: "Downloading Minecraft \(entry.name)") { [googlePlay, versionsFolder = paths.versions] progress in
             try? FileManager.default.removeItem(at: folder)
+            defer { if !keep { try? FileManager.default.removeItem(at: folder) } }
             let apks = try await googlePlay.download(versionCode: entry.versionCode, to: folder) { done, total in
                 progress(total > 0 ? Double(done) / Double(total) : nil)
             }
             try Task.checkCancellation()
             progress(nil)
-            defer { if !keep { try? FileManager.default.removeItem(at: folder) } }
-            return try await Self.offMain { try VersionInstaller.install(apks: apks, versionsFolder: versionsFolder) }
+            return try await Self.offMain { stop in
+                try VersionInstaller.install(apks: apks, versionsFolder: versionsFolder, shouldStop: stop)
+            }
         }
     }
 
@@ -200,11 +206,15 @@ final class LauncherModel: ObservableObject {
         let versionsFolder = paths.versions
         if exports.count == 1 && urls.count == 1 {
             runInstall(title: "Importing \(exports[0].lastPathComponent)") { _ in
-                try await Self.offMain { try ReleaseArchive.importFile(exports[0], versionsFolder: versionsFolder) }
+                try await Self.offMain { stop in
+                    try ReleaseArchive.importFile(exports[0], versionsFolder: versionsFolder, shouldStop: stop)
+                }
             }
         } else if exports.isEmpty {
             runInstall(title: "Installing from APK files") { _ in
-                try await Self.offMain { try VersionInstaller.install(apks: urls, versionsFolder: versionsFolder) }
+                try await Self.offMain { stop in
+                    try VersionInstaller.install(apks: urls, versionsFolder: versionsFolder, shouldStop: stop)
+                }
             }
         } else {
             errorMessage = "Pick either one .mcversion file or a set of .apk files."
@@ -216,15 +226,14 @@ final class LauncherModel: ObservableObject {
         guard !isInstalling else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = ReleaseArchive.fileName(for: version)
-        if let type = UTType(filenameExtension: ReleaseArchive.fileExtension) {
-            panel.allowedContentTypes = [type]
-        }
-        guard panel.runModal() == .OK, let file = panel.url else { return }
+        guard panel.runModal() == .OK, let picked = panel.url else { return }
+        let file = ReleaseArchive.exportFile(picked)
         installProgress = ("Exporting Minecraft \(version.name)", nil)
         installTask = Task {
             do {
-                try await Self.offMain { try ReleaseArchive.export(version, to: file) }
+                try await Self.offMain { stop in try ReleaseArchive.export(version, to: file, shouldStop: stop) }
                 noticeMessage = "Saved \(file.lastPathComponent). Import it on another Mac from its Versions page."
+            } catch is CancellationError {
             } catch {
                 errorMessage = "Could not export \(version.name): \(error.localizedDescription)"
             }
@@ -266,16 +275,30 @@ final class LauncherModel: ObservableObject {
         }
     }
 
-    /// Runs file work away from the main thread.
-    nonisolated static func offMain<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
-        try await Task.detached(priority: .userInitiated) { try work() }.value
+    /// Runs file work away from the main thread. The work gets a `stop`
+    /// check that turns true when the calling task is cancelled.
+    nonisolated static func offMain<T: Sendable>(_ work: @escaping @Sendable (@escaping () -> Bool) throws -> T) async throws -> T {
+        let flag = StopFlag()
+        let job = Task.detached(priority: .userInitiated) { try work { flag.isSet } }
+        return try await withTaskCancellationHandler {
+            try await job.value
+        } onCancel: {
+            flag.set()
+        }
     }
 
     /// Asks Google Play for its current version. Failures only mean no banner.
     func checkGooglePlayVersion() {
         guard googleEmail != nil else { return }
         Task {
-            playLatestCode = try? await googlePlay.latestVersionCode()
+            do {
+                playLatestCode = try await googlePlay.latestVersionCode()
+            } catch GooglePlayError.signInNeeded {
+                signOutOfGoogle()
+                noticeMessage = "Google asked to sign in again. Sign in on the Settings page before downloading."
+            } catch {
+                playLatestCode = nil
+            }
             updatePlayBanner()
         }
     }
@@ -429,4 +452,12 @@ final class LauncherModel: ObservableObject {
             NSApp.activate()
         }
     }
+}
+
+/// Set from a cancel handler, read by work running on another thread.
+final class StopFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var isSet: Bool { lock.withLock { value } }
+    func set() { lock.withLock { value = true } }
 }

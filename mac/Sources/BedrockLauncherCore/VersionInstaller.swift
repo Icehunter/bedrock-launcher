@@ -9,6 +9,7 @@ public enum VersionInstaller {
         case alreadyInstalled(String)
         case unzipFailed(String)
         case badName(String)
+        case unsafeArchive(String)
 
         public var errorDescription: String? {
             switch self {
@@ -16,6 +17,7 @@ public enum VersionInstaller {
             case .noArm64Library: "These APK files have no arm64 game library"
             case .alreadyInstalled(let name): "Minecraft \(name) is already installed"
             case .unzipFailed(let file): "Could not unpack \(file)"
+            case .unsafeArchive(let file): "\(file) holds links to other places on the disk, so it was not installed"
             case .badName(let name): "\"\(name)\" is not a usable version name"
             }
         }
@@ -35,11 +37,18 @@ public enum VersionInstaller {
     /// Unpacks every split, then the base last, since each split carries its
     /// own AndroidManifest.xml and only the base one is right. The files go to
     /// a hidden folder first and move to `versions/<versionName>` when done.
-    public static func install(apks: [URL], versionsFolder: URL) throws -> GameVersion {
+    /// `shouldStop` is asked between steps; when it says yes the install
+    /// throws `CancellationError` and leaves nothing behind.
+    public static func install(apks: [URL], versionsFolder: URL,
+                               shouldStop: () -> Bool = { false }) throws -> GameVersion {
         let base = try baseAPK(of: apks)
         let order = apks.filter { $0 != base } + [base]
-        return try installStaged(into: versionsFolder) { stage in
+        for apk in order where try hasLinks(apk) {
+            throw Error.unsafeArchive(apk.lastPathComponent)
+        }
+        return try installStaged(into: versionsFolder, shouldStop: shouldStop) { stage in
             for apk in order {
+                if shouldStop() { throw CancellationError() }
                 // 11 means the META-INF pattern matched nothing.
                 let result = try run("/usr/bin/unzip", ["-qo", apk.path, "-x", "META-INF/*", "-d", stage.path])
                 guard result.status == 0 || result.status == 11 else {
@@ -52,7 +61,8 @@ public enum VersionInstaller {
     /// Runs `fill` on a fresh hidden folder in `versionsFolder`, checks the
     /// result is a game version and moves it into place. Any failure removes
     /// the hidden folder.
-    static func installStaged(into versionsFolder: URL, _ fill: (URL) throws -> Void) throws -> GameVersion {
+    static func installStaged(into versionsFolder: URL, shouldStop: () -> Bool = { false },
+                              _ fill: (URL) throws -> Void) throws -> GameVersion {
         let fm = FileManager.default
         try fm.createDirectory(at: versionsFolder, withIntermediateDirectories: true)
         let stage = versionsFolder.appendingPathComponent(".installing-\(UUID().uuidString)", isDirectory: true)
@@ -66,8 +76,17 @@ public enum VersionInstaller {
         guard isUsableName(manifest.versionName) else { throw Error.badName(manifest.versionName) }
         let target = versionsFolder.appendingPathComponent(manifest.versionName, isDirectory: true)
         guard !fm.fileExists(atPath: target.path) else { throw Error.alreadyInstalled(manifest.versionName) }
+        if shouldStop() { throw CancellationError() }
         try fm.moveItem(at: stage, to: target)
         return GameVersion(name: manifest.versionName, folder: target)
+    }
+
+    /// True when the zip holds a symbolic link. A link unpacked first could
+    /// send later files to any place on the disk, so such files are refused.
+    static func hasLinks(_ zip: URL) throws -> Bool {
+        let listing = try run("/usr/bin/zipinfo", [zip.path])
+        guard listing.status == 0 else { return false }
+        return listing.output.split(separator: "\n").contains { $0.hasPrefix("l") }
     }
 
     /// Version names become folder names, so only plain names pass.

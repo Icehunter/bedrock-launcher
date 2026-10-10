@@ -25,6 +25,7 @@
 #include <zlib.h>
 
 #include <chrono>
+#include <filesystem>
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
@@ -45,6 +46,14 @@ namespace {
 struct auth_error : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
+
+// Google says no with an Error= field, which upstream reports as "Login
+// error: ...". Anything else, such as no network, is not a refused token.
+[[noreturn]] void rethrow_login(std::runtime_error const& e) {
+    if (std::string(e.what()).rfind("Login error:", 0) == 0)
+        throw auth_error(e.what());
+    throw std::runtime_error(e.what());
+}
 
 [[noreturn]] void usage() {
     std::cerr << "usage: bedrock-gplay login --state DIR\n"
@@ -85,7 +94,7 @@ struct session {
         try {
             login.perform_with_access_token(oauth_token)->call();
         } catch (std::runtime_error& e) {
-            throw auth_error(e.what());
+            rethrow_login(e);
         }
         if (!login.has_token())
             throw auth_error("Google did not return a token");
@@ -101,7 +110,7 @@ struct session {
         try {
             login.verify()->call();
         } catch (std::runtime_error& e) {
-            throw auth_error(e.what());
+            rethrow_login(e);
         }
     }
 
@@ -231,13 +240,15 @@ int run(int argc, char** argv) {
 
     umask(077);
     if (cmd == "download") {
-        mkdir(out.c_str(), 0700);
+        std::error_code ec;
+        std::filesystem::create_directories(out, ec);
         char buf[PATH_MAX];
         if (!realpath(out.c_str(), buf))
             throw std::runtime_error("cannot open " + out);
         out = buf;
     }
-    mkdir(state.c_str(), 0700);
+    std::error_code ec;
+    std::filesystem::create_directories(state, ec);
     if (chdir(state.c_str()) != 0)
         throw std::runtime_error("cannot open " + state);
 
