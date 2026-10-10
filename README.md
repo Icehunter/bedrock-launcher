@@ -32,6 +32,33 @@ The launcher parts live in `deps/`:
 the `bedrock-macos` branch: `libc-shim`, `minecraft-imported-symbols`, `mcpelauncher-core` and
 `mcpelauncher-client`. The rest come straight from upstream.
 
+## Building
+
+Needs an Apple Silicon Mac with:
+
+- Xcode (from the App Store), opened once so it finishes setting up
+- [Homebrew](https://brew.sh), then `brew install cmake ninja python3`
+- Android NDK 30.0.16248370, from Android Studio's SDK Manager or
+  `sdkmanager "ndk;30.0.16248370"`. If it is not in the Android Studio default folder, set
+  `ANDROID_NDK_ROOT` to it.
+
+Get the source as above, then:
+
+```sh
+scripts/build.sh
+```
+
+This builds MoltenVK, ANGLE, the game client and the updates mod, then puts them together in
+`out/bundle/Contents` and checks the result. The first build takes about an hour, most of it
+ANGLE. Later builds skip MoltenVK and ANGLE when their source has not changed.
+
+To start the game from the bundle, with an unpacked game folder and a folder for worlds and
+settings:
+
+```sh
+scripts/run-bundle.sh out/bundle/Contents /path/to/game /path/to/data
+```
+
 ## Keeping up with upstream
 
 ```sh
