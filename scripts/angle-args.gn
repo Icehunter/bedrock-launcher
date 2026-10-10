@@ -1,0 +1,13 @@
+is_debug = false
+is_component_build = false
+target_cpu = "arm64"
+symbol_level = 0
+treat_warnings_as_errors = false
+angle_enable_vulkan = true
+angle_enable_metal = false
+angle_enable_gl = false
+angle_enable_swiftshader = false
+angle_enable_null = false
+angle_build_tests = false
+use_custom_libcxx = false
+use_lld = false
