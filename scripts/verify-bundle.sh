@@ -33,8 +33,21 @@ EXPECTED=(
   Resources/mods/mcpelauncher-updates/patches/v1.26.0.2/arm64-v8a/libmaesdk.so
 )
 
+# A finished app also carries the launcher itself and the sign-in helper.
+case "$CONTENTS" in
+  *.app/Contents | *.app/Contents/)
+    EXPECTED+=(
+      MacOS/BedrockLauncher
+      MacOS/mcpelauncher-webview
+      Info.plist
+      Resources/AppIcon.icns
+      Resources/BedrockLauncher_BedrockLauncher.bundle
+    )
+    ;;
+esac
+
 for f in "${EXPECTED[@]}"; do
-  [ -f "$CONTENTS/$f" ] || fail "missing $f"
+  [ -e "$CONTENTS/$f" ] || fail "missing $f"
 done
 
 # Version strings like 15.0 or 14.5.1: true when $1 is newer than $2.

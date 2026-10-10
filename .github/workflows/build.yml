@@ -58,11 +58,11 @@ jobs:
       - name: Package
         run: |
           cd out
-          ditto -c -k --keepParent bundle bedrock-launcher-bundle.zip
+          ditto -c -k --keepParent "Bedrock Launcher.app" Bedrock-Launcher.zip
 
       - name: Upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: bedrock-launcher-bundle
-          path: out/bedrock-launcher-bundle.zip
+          name: Bedrock-Launcher
+          path: out/Bedrock-Launcher.zip
           if-no-files-found: error

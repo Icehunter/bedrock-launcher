@@ -7,6 +7,21 @@ forks under this account.
 The game itself is not in this repo. Each player downloads it from Google Play with their own
 account.
 
+## Using the launcher
+
+The launcher has these pages:
+
+- Play: pick a profile and start the game.
+- Content: install `.mcpack`, `.mcaddon` and `.mcworld` files, open `minecraft://` links, open
+  the game folders, link pack folders you are working on, and see the pack errors from the last
+  run.
+- Versions: the installed game versions.
+- Game Log: the game's output while it runs.
+- Settings: launcher options.
+
+The app is not signed with an Apple Developer ID yet. The first time you open it, macOS blocks it:
+open System Settings, go to Privacy & Security, and click Open Anyway next to Bedrock Launcher.
+
 ## Getting the source
 
 ```sh
@@ -52,8 +67,8 @@ Get the source as above, then:
 scripts/build.sh
 ```
 
-This builds MoltenVK, ANGLE, the game client and the updates mod, then puts them together in
-`out/bundle/Contents` and checks the result. The first build takes about an hour, most of it
+This builds MoltenVK, ANGLE, the game client, the updates mod and the launcher, then puts them
+together as `out/Bedrock Launcher.app` and checks the result. The first build takes about an hour, most of it
 ANGLE. Later builds skip MoltenVK and ANGLE when their source has not changed.
 
 To start the game from the bundle, with an unpacked game folder and a folder for worlds and
