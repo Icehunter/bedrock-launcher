@@ -68,6 +68,9 @@ rebase_fork() {
   git -C "$dir" remote add upstream "https://github.com/$upstream.git"
   git -C "$dir" fetch -q --filter=blob:none upstream "$upstream_branch"
   git -C "$dir" rev-parse HEAD >"$dir.old"
+  if git -C "$dir" merge-base --is-ancestor "upstream/$upstream_branch" HEAD; then
+    return
+  fi
   if ! git -C "$dir" rebase -q "upstream/$upstream_branch"; then
     git -C "$dir" rebase --abort || true
     say "$name needs a manual rebase; nothing was pushed" >&2
