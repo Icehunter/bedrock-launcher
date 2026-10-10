@@ -28,7 +28,13 @@ jobs:
           git submodule update --init --depth 1 deps/Google-Play-API
 
       - name: Tools
-        run: brew install cmake ninja
+        run: |
+          brew install cmake ninja ccache
+          # CMake reads these, so every C and C++ build goes through ccache.
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >>"$GITHUB_ENV"
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >>"$GITHUB_ENV"
+          echo "CCACHE_DIR=$HOME/.ccache" >>"$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=2G" >>"$GITHUB_ENV"
 
       - name: Android NDK
         run: |
@@ -53,6 +59,20 @@ jobs:
         with:
           path: out/moltenvk
           key: moltenvk-${{ steps.commits.outputs.moltenvk }}-macos-${{ steps.commits.outputs.macos }}
+
+      - name: Cache OpenSSL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/openssl-3.5.9-macos-${{ steps.commits.outputs.macos }}
+          key: openssl-3.5.9-macos-${{ steps.commits.outputs.macos }}
+
+      # Saved after every run under a new key; the newest one is restored.
+      - name: Cache compiled objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ccache
+          key: ccache-macos-${{ steps.commits.outputs.macos }}-${{ github.sha }}
+          restore-keys: ccache-macos-${{ steps.commits.outputs.macos }}-
 
       - name: Cache protobuf
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -86,7 +106,9 @@ jobs:
           echo "SIGN_IDENTITY=$IDENTITY" >>"$GITHUB_ENV"
 
       - name: Build
-        run: scripts/build.sh
+        run: |
+          scripts/build.sh
+          ccache --show-stats
 
       - name: Disk image
         env:
