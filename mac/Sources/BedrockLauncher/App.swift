@@ -59,6 +59,14 @@ struct RootView: View {
         } message: {
             Text(model.errorMessage ?? "")
         }
+        .alert("Note", isPresented: Binding(
+            get: { model.noticeMessage != nil },
+            set: { if !$0 { model.noticeMessage = nil } }
+        )) {
+            Button("OK") { model.noticeMessage = nil }
+        } message: {
+            Text(model.noticeMessage ?? "")
+        }
     }
 }
 

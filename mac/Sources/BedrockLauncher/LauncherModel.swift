@@ -53,6 +53,14 @@ final class LauncherModel: ObservableObject {
     @Published private(set) var googleEmail: String?
     @Published private(set) var isSigningIn = false
     let googlePlay: GooglePlay
+    /// Game versions the launcher is known to run; Download offers only these.
+    @Published private(set) var tested = TestedVersions(versions: [])
+    /// Shown while a download, import or export runs. A nil fraction means
+    /// the size is not known yet.
+    @Published private(set) var installProgress: (title: String, fraction: Double?)?
+    /// Something worth knowing that is not a failure.
+    @Published var noticeMessage: String?
+    private var installTask: Task<Void, Never>?
     /// When the last game session ended and how; kept between launches.
     @Published private(set) var lastSession: (ended: Date, exitCode: Int32)?
 
@@ -81,6 +89,13 @@ final class LauncherModel: ObservableObject {
         }
         googlePlay = GooglePlay(helper: bundleContents.appendingPathComponent("MacOS/bedrock-gplay"), state: paths.google)
         googleEmail = googlePlay.isSignedIn ? UserDefaults.standard.string(forKey: "googleEmail") ?? "" : nil
+        let bundled = (try? Data(contentsOf: bundleContents.appendingPathComponent("Resources/tested-versions.json"))) ?? Data()
+        tested = TestedVersions.load(remote: nil, bundled: bundled)
+        Task { [weak self] in
+            let remote = try? await URLSession.shared.data(from: TestedVersions.remote)
+            guard let self, (remote?.1 as? HTTPURLResponse)?.statusCode == 200 else { return }
+            self.tested = TestedVersions.load(remote: remote?.0, bundled: bundled)
+        }
         refresh()
         if let ended = UserDefaults.standard.object(forKey: "lastSessionEnded") as? Date {
             lastSession = (ended, Int32(UserDefaults.standard.integer(forKey: "lastSessionExitCode")))
@@ -138,6 +153,114 @@ final class LauncherModel: ObservableObject {
         }
         UserDefaults.standard.removeObject(forKey: "googleEmail")
         googleEmail = nil
+    }
+
+    var isInstalling: Bool { installProgress != nil }
+
+    /// Downloads a tested version from Google Play and installs it. Signs in
+    /// to Google first when needed.
+    func download(_ entry: TestedVersions.Entry) {
+        guard !isInstalling else { return }
+        guard googleEmail != nil else {
+            signInToGoogle { [weak self] in self?.download(entry) }
+            return
+        }
+        let folder = paths.apks.appendingPathComponent(String(entry.versionCode), isDirectory: true)
+        let keep = settings.keepDownloadedAPKs
+        runInstall(title: "Downloading Minecraft \(entry.name)") { [googlePlay, versionsFolder = paths.versions] progress in
+            try? FileManager.default.removeItem(at: folder)
+            let apks = try await googlePlay.download(versionCode: entry.versionCode, to: folder) { done, total in
+                progress(total > 0 ? Double(done) / Double(total) : nil)
+            }
+            try Task.checkCancellation()
+            progress(nil)
+            defer { if !keep { try? FileManager.default.removeItem(at: folder) } }
+            return try await Self.offMain { try VersionInstaller.install(apks: apks, versionsFolder: versionsFolder) }
+        }
+    }
+
+    /// Installs a version from APK files or from a .mcversion export.
+    func pickAndImport() {
+        guard !isInstalling else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = ["apk", ReleaseArchive.fileExtension].compactMap { UTType(filenameExtension: $0) }
+        panel.allowsMultipleSelection = true
+        panel.prompt = "Import"
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        let urls = panel.urls
+        let exports = urls.filter { $0.pathExtension == ReleaseArchive.fileExtension }
+        let versionsFolder = paths.versions
+        if exports.count == 1 && urls.count == 1 {
+            runInstall(title: "Importing \(exports[0].lastPathComponent)") { _ in
+                try await Self.offMain { try ReleaseArchive.importFile(exports[0], versionsFolder: versionsFolder) }
+            }
+        } else if exports.isEmpty {
+            runInstall(title: "Installing from APK files") { _ in
+                try await Self.offMain { try VersionInstaller.install(apks: urls, versionsFolder: versionsFolder) }
+            }
+        } else {
+            errorMessage = "Pick either one .mcversion file or a set of .apk files."
+        }
+    }
+
+    /// Saves a version as a .mcversion file for another Mac.
+    func export(_ version: GameVersion) {
+        guard !isInstalling else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = ReleaseArchive.fileName(for: version)
+        if let type = UTType(filenameExtension: ReleaseArchive.fileExtension) {
+            panel.allowedContentTypes = [type]
+        }
+        guard panel.runModal() == .OK, let file = panel.url else { return }
+        installProgress = ("Exporting Minecraft \(version.name)", nil)
+        installTask = Task {
+            do {
+                try await Self.offMain { try ReleaseArchive.export(version, to: file) }
+                noticeMessage = "Saved \(file.lastPathComponent). Import it on another Mac from its Versions page."
+            } catch {
+                errorMessage = "Could not export \(version.name): \(error.localizedDescription)"
+            }
+            installProgress = nil
+            installTask = nil
+        }
+    }
+
+    func cancelInstall() {
+        installTask?.cancel()
+    }
+
+    /// Runs one install with the progress bar showing, then checks the result
+    /// against the tested list.
+    private func runInstall(title: String,
+                            _ work: @escaping @MainActor (@escaping @Sendable (Double?) -> Void) async throws -> GameVersion) {
+        installProgress = (title, nil)
+        installTask = Task {
+            do {
+                let version = try await work { fraction in
+                    Task { @MainActor in
+                        if self.installProgress != nil { self.installProgress = (title, fraction) }
+                    }
+                }
+                refresh()
+                let code = try? AndroidManifest.read(file: version.folder.appendingPathComponent("AndroidManifest.xml")).versionCode
+                if let code, tested.entry(code: code) == nil {
+                    noticeMessage = "Minecraft \(version.name) is not on the tested list. It may not run."
+                }
+            } catch is CancellationError {
+            } catch GooglePlayError.signInNeeded {
+                signOutOfGoogle()
+                errorMessage = "Google asked to sign in again. Sign in on the Settings page, then download again."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            installProgress = nil
+            installTask = nil
+        }
+    }
+
+    /// Runs file work away from the main thread.
+    nonisolated static func offMain<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
+        try await Task.detached(priority: .userInitiated) { try work() }.value
     }
 
     func deleteVersion(_ version: GameVersion) {
