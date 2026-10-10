@@ -10,8 +10,14 @@ account.
 ## Getting the source
 
 ```sh
-git clone --recurse-submodules --shallow-submodules https://github.com/Icehunter/bedrock-launcher.git
+git clone https://github.com/Icehunter/bedrock-launcher.git
+cd bedrock-launcher
+git submodule update --init --depth 1 deps/angle deps/MoltenVK
+git submodule update --init --recursive deps/mcpelauncher-manifest deps/mcpelauncher-updates
 ```
+
+Do not clone with `--recurse-submodules`. ANGLE lists Chromium submodules, some of which need a
+Google account. The ANGLE build fetches its own third-party code with `gclient` instead.
 
 The launcher parts live in `deps/`:
 
