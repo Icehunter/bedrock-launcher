@@ -22,7 +22,10 @@ public enum ContentLog {
 
     public static func parse(_ text: String) -> [ContentLogEntry] {
         var entries: [ContentLogEntry] = []
-        for line in text.components(separatedBy: "\n") where !line.trimmingCharacters(in: .whitespaces).isEmpty {
+        // The game writes \r\n line endings, with a blank line between entries.
+        for rawLine in text.components(separatedBy: "\n") {
+            let line = rawLine.trimmingCharacters(in: CharacterSet(charactersIn: "\r"))
+            if line.trimmingCharacters(in: .whitespaces).isEmpty { continue }
             if let entry = entry(from: line) {
                 entries.append(entry)
             } else if let last = entries.popLast() {

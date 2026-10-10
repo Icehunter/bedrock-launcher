@@ -1,0 +1,71 @@
+import AppKit
+import BedrockLauncherCore
+import SwiftUI
+
+struct SettingsPage: View {
+    @EnvironmentObject var model: LauncherModel
+    @State private var tab = 0
+    @State private var confirmReset = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SubTabs(titles: ["General", "About"], selected: $tab)
+            if tab == 0 { general } else { about }
+            Spacer()
+        }
+        .padding(20)
+    }
+
+    private var general: some View {
+        Panel {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionTitle(text: "Launcher")
+                Toggle("Hide the launcher while the game runs", isOn: $model.settings.hideWhilePlaying)
+                Toggle("Check for launcher updates when it opens", isOn: $model.settings.checkForUpdates)
+                Toggle("Keep downloaded APK files", isOn: $model.settings.keepDownloadedAPKs)
+                Toggle("Network debug logging", isOn: $model.settings.networkDebug)
+                Button("OPEN LAUNCHER DATA FOLDER") {
+                    try? FileManager.default.createDirectory(at: model.paths.root, withIntermediateDirectories: true)
+                    NSWorkspace.shared.open(model.paths.root)
+                }
+                .buttonStyle(ChunkyButtonStyle())
+            }
+            .toggleStyle(.checkbox)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var about: some View {
+        Panel {
+            VStack(spacing: 12) {
+                Theme.icon("app").resizable().frame(width: 96, height: 96)
+                Text("BEDROCK LAUNCHER").font(.system(size: 16, weight: .heavy))
+                Text("Version \(AppInfo.version)").foregroundStyle(Theme.dimText)
+                HStack(spacing: 10) {
+                    Button("SOURCE") { NSWorkspace.shared.open(AppInfo.repo) }.buttonStyle(ChunkyButtonStyle())
+                    Button("REPORT A PROBLEM") { NSWorkspace.shared.open(AppInfo.issues) }.buttonStyle(ChunkyButtonStyle())
+                }
+                Text("Runs Minecraft: Bedrock Edition on Apple Silicon Macs, built on the minecraft-linux launcher. The game comes from Google Play with your own account.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.dimText)
+                    .multilineTextAlignment(.center).frame(maxWidth: 520)
+                Button("RESET LAUNCHER SETTINGS") { confirmReset = true }
+                    .buttonStyle(ChunkyButtonStyle(kind: .red))
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .confirmationDialog("Reset launcher settings?", isPresented: $confirmReset) {
+            Button("Reset", role: .destructive) { model.settings = LauncherSettings() }
+        } message: {
+            Text("The settings on this page go back to their defaults. Profiles, game versions and worlds stay.")
+        }
+    }
+}
+
+enum AppInfo {
+    static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
+    }
+    static let repo = URL(string: "https://github.com/Icehunter/bedrock-launcher")!
+    static let issues = URL(string: "https://github.com/Icehunter/bedrock-launcher/issues")!
+    static let latestRelease = URL(string: "https://api.github.com/repos/Icehunter/bedrock-launcher/releases/latest")!
+}

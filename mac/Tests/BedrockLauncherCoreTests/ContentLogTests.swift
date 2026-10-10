@@ -23,6 +23,15 @@ import Testing
         #expect(entries[1].message == "textures/blocks/foo.png missing\nsecond line of the same entry")
     }
 
+    @Test func handlesWindowsLineEndings() {
+        // The game writes \r\n with a blank line between entries.
+        let text = "11:51:36[FeatureRegistry][error]-Feature already exists\r\n\r\n11:51:51[Geometry][error]-model already has a locator\r\n\r\n"
+        let entries = ContentLog.parse(text)
+        #expect(entries.count == 2)
+        #expect(entries[0].message == "Feature already exists")
+        #expect(entries[1].message == "model already has a locator")
+    }
+
     @Test func picksNewestLogFile() throws {
         let data = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let logs = data.appendingPathComponent("games/com.mojang/logs", isDirectory: true)
