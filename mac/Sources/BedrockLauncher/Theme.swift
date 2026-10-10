@@ -43,6 +43,8 @@ struct ChunkyButtonStyle: ButtonStyle {
     var fontSize: CGFloat = 12
     var horizontalPadding: CGFloat = 16
     var verticalPadding: CGFloat = 9
+    /// Stretch to the width of the container, with the label on the left.
+    var fullWidth = false
 
     @Environment(\.isEnabled) private var isEnabled
 
@@ -56,6 +58,7 @@ struct ChunkyButtonStyle: ButtonStyle {
         let pressed = configuration.isPressed
         let edge: CGFloat = pressed ? 2 : 5
         return configuration.label
+            .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
             .font(.system(size: fontSize, weight: .heavy))
             .kerning(0.5)
             .foregroundStyle(Theme.text)
@@ -67,8 +70,52 @@ struct ChunkyButtonStyle: ButtonStyle {
             .background(colors.edge)
             .overlay(Rectangle().stroke(Theme.outline, lineWidth: 2))
             .offset(y: pressed ? 3 : 0)
-            .padding(.bottom, pressed ? 0 : 0)
             .opacity(isEnabled ? 1 : 0.45)
+    }
+}
+
+/// Bedrock's switch: a square knob that slides along a chunky track, which
+/// turns green when on. The label sits on the left, the switch on the right.
+struct BlockToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.12)) { configuration.isOn.toggle() }
+        } label: {
+            HStack {
+                configuration.label
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.text)
+                Spacer(minLength: 16)
+                track(on: configuration.isOn)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func track(on: Bool) -> some View {
+        ZStack(alignment: on ? .trailing : .leading) {
+            Rectangle()
+                .fill(on ? Theme.green.face : Theme.field)
+                .frame(width: 56, height: 28)
+                .overlay(alignment: .leading) {
+                    // A tick on the green side, a ring on the off side, as in the game.
+                    Image(systemName: on ? "checkmark" : "circle")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(on ? Theme.text : Theme.dimText)
+                        .frame(width: 28)
+                        .offset(x: on ? 0 : 28)
+                }
+            Rectangle()
+                .fill(Theme.slate.light)
+                .frame(width: 24, height: 20)
+                .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.35)).frame(height: 2) }
+                .padding(.bottom, 4)
+                .background(Theme.slate.edge)
+                .overlay(Rectangle().stroke(Theme.outline, lineWidth: 2))
+                .padding(2)
+        }
+        .overlay(Rectangle().stroke(Theme.outline, lineWidth: 2))
     }
 }
 

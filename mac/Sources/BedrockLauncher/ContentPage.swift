@@ -55,8 +55,13 @@ struct ContentPage: View {
                 }
                 HStack(spacing: 10) {
                     TextField("minecraft://", text: $link)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 420)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13, design: .monospaced))
+                        .padding(.horizontal, 10)
+                        .frame(height: 36)
+                        .background(Theme.field)
+                        .overlay(Rectangle().stroke(Theme.outline, lineWidth: 2))
+                        .frame(maxWidth: 480)
                     Button("OPEN LINK") { model.play(extraArguments: ["-u", link]) }
                         .buttonStyle(ChunkyButtonStyle())
                         .disabled(!link.hasPrefix("minecraft://") || link == "minecraft://")
@@ -81,10 +86,10 @@ struct ContentPage: View {
         return Panel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Folders")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], alignment: .leading, spacing: 10) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                     ForEach(folders, id: \.0) { name, url in
                         Button(name.uppercased()) { open(url) }
-                            .buttonStyle(ChunkyButtonStyle())
+                            .buttonStyle(ChunkyButtonStyle(fullWidth: true))
                             .help(url.path)
                     }
                 }

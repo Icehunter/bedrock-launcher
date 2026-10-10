@@ -24,14 +24,15 @@ struct SettingsPage: View {
                 Toggle("Check for launcher updates when it opens", isOn: $model.settings.checkForUpdates)
                 Toggle("Keep downloaded APK files", isOn: $model.settings.keepDownloadedAPKs)
                 Toggle("Network debug logging", isOn: $model.settings.networkDebug)
+                Divider().overlay(Theme.outline)
                 Button("OPEN LAUNCHER DATA FOLDER") {
                     try? FileManager.default.createDirectory(at: model.paths.root, withIntermediateDirectories: true)
                     NSWorkspace.shared.open(model.paths.root)
                 }
                 .buttonStyle(ChunkyButtonStyle())
             }
-            .toggleStyle(.checkbox)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .toggleStyle(BlockToggleStyle())
+            .frame(maxWidth: 560, alignment: .leading)
         }
     }
 

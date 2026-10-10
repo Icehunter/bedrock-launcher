@@ -124,23 +124,25 @@ struct PlayPage: View {
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle(text: "Quick actions")
                 Button("INSTALL CONTENT…") { model.pickAndInstallContent() }
-                    .buttonStyle(ChunkyButtonStyle())
+                    .buttonStyle(ChunkyButtonStyle(fullWidth: true))
                 Button("OPEN WORLDS FOLDER") {
                     let worlds = data.appendingPathComponent("games/com.mojang/minecraftWorlds", isDirectory: true)
                     try? FileManager.default.createDirectory(at: worlds, withIntermediateDirectories: true)
                     NSWorkspace.shared.open(worlds)
                 }
-                .buttonStyle(ChunkyButtonStyle())
+                .buttonStyle(ChunkyButtonStyle(fullWidth: true))
                 Button("LINK A PACK FOLDER…") { model.page = .content }
-                    .buttonStyle(ChunkyButtonStyle())
+                    .buttonStyle(ChunkyButtonStyle(fullWidth: true))
             }
+            .frame(width: 280)
         }
     }
 
     private var profileCard: some View {
         Panel {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("PROFILE").font(.system(size: 10, weight: .heavy)).foregroundStyle(Theme.dimText)
                     Menu {
                         ForEach(model.profileList) { p in
                             Button(p.name) { model.selectProfile(p.id) }
@@ -148,11 +150,16 @@ struct PlayPage: View {
                         Divider()
                         Button("New Profile…") { editing = Profile(name: "New Profile") }
                     } label: {
-                        Text(model.selectedProfile.name).font(.system(size: 15, weight: .heavy))
+                        HStack(spacing: 6) {
+                            Text(model.selectedProfile.name).font(.system(size: 16, weight: .heavy))
+                            Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundStyle(Theme.text)
                     }
-                    .menuStyle(.borderlessButton)
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .menuIndicator(.hidden)
                     .fixedSize()
-                    Text("Profile").font(.system(size: 11)).foregroundStyle(Theme.dimText)
                 }
                 Button { editing = model.selectedProfile } label: {
                     Image(systemName: "pencil").frame(width: 14, height: 14)

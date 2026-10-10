@@ -8,7 +8,8 @@ struct LogPage: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Toggle("Network debug logging (next launch)", isOn: $model.settings.networkDebug)
-                    .toggleStyle(.checkbox)
+                    .toggleStyle(BlockToggleStyle())
+                    .frame(width: 380)
                 Spacer()
                 Button("COPY") { copy() }.buttonStyle(ChunkyButtonStyle())
                 Button("SAVE…") { save() }.buttonStyle(ChunkyButtonStyle())
