@@ -27,7 +27,7 @@ struct PlayPage: View {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // The scenery is drawn behind the content so it never changes the layout.
-        .background { Scenery() }
+        .background { Scenery(paused: model.isRunning) }
         .clipped()
         .onAppear(perform: reloadCounts)
         .onChange(of: model.selectedProfileID) { _, _ in reloadCounts() }
