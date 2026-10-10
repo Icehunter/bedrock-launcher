@@ -1,0 +1,18 @@
+[submodule "deps/mcpelauncher-manifest"]
+	path = deps/mcpelauncher-manifest
+	url = https://github.com/Icehunter/mcpelauncher-manifest.git
+	branch = bedrock-macos
+[submodule "deps/mcpelauncher-updates"]
+	path = deps/mcpelauncher-updates
+	url = https://github.com/Icehunter/mcpelauncher-updates.git
+	branch = bedrock-macos
+[submodule "deps/angle"]
+	path = deps/angle
+	url = https://github.com/Icehunter/angle.git
+	branch = fix/moltenvk-macos-gles31-support
+	shallow = true
+[submodule "deps/MoltenVK"]
+	path = deps/MoltenVK
+	url = https://github.com/Icehunter/MoltenVK.git
+	branch = fix/vulkan-integer-float-format-mismatch
+	shallow = true
