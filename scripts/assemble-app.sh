@@ -50,8 +50,11 @@ fi
 
 # Sign every Mach-O file first, then the app as a whole. macOS treats every
 # file under Frameworks as code, so the MoltenVK JSON there is signed too
-# (its signature goes in extended attributes).
+# (its signature goes in extended attributes). The app's main executable is
+# left for last: codesign given that file signs the whole app, which fails
+# while other files inside are still unsigned.
 while IFS= read -r -d '' f; do
+  [ "$f" = "$C/MacOS/BedrockLauncher" ] && continue
   if file -b "$f" | grep -q '^Mach-O' || [[ "$f" == "$C/Frameworks/"* ]]; then
     if [ "$f" = "$C/MacOS/mcpelauncher-client" ] && [ "$IDENTITY" != "-" ]; then
       "${SIGN[@]}" --entitlements "$ROOT/mac/client.entitlements" "$f"
