@@ -14,6 +14,7 @@ struct SettingsPage: View {
             Spacer()
         }
         .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var general: some View {
@@ -32,13 +33,13 @@ struct SettingsPage: View {
                 .buttonStyle(ChunkyButtonStyle())
             }
             .toggleStyle(BlockToggleStyle())
-            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private var about: some View {
         Panel {
-            VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
                 Theme.icon("app").resizable().frame(width: 96, height: 96)
                 Text("BEDROCK LAUNCHER").font(.system(size: 16, weight: .heavy))
                 Text("Version \(AppInfo.version)").foregroundStyle(Theme.dimText)
@@ -48,11 +49,11 @@ struct SettingsPage: View {
                 }
                 Text("Runs Minecraft: Bedrock Edition on Apple Silicon Macs, built on the minecraft-linux launcher. The game comes from Google Play with your own account.")
                     .font(.system(size: 12)).foregroundStyle(Theme.dimText)
-                    .multilineTextAlignment(.center).frame(maxWidth: 520)
+                    .frame(maxWidth: 620, alignment: .leading)
                 Button("RESET LAUNCHER SETTINGS") { confirmReset = true }
                     .buttonStyle(ChunkyButtonStyle(kind: .red))
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .confirmationDialog("Reset launcher settings?", isPresented: $confirmReset) {
             Button("Reset", role: .destructive) { model.settings = LauncherSettings() }

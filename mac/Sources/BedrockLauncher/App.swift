@@ -92,14 +92,15 @@ struct TopBar: View {
 /// Mods arrive in a later version; the page says so.
 struct ModsPage: View {
     var body: some View {
-        ZStack {
-            Scenery().opacity(0.35)
+        VStack(alignment: .leading) {
             Panel {
                 Text("Browsing and installing launcher mods comes in a later version. The updates mod the game needs is already built in.")
                     .foregroundStyle(Theme.dimText)
-                    .frame(maxWidth: 520)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            Spacer()
         }
-        .clipped()
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
