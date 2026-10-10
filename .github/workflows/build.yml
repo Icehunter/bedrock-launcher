@@ -25,6 +25,7 @@ jobs:
         run: |
           git submodule update --init --depth 1 deps/angle deps/MoltenVK
           git submodule update --init --recursive deps/mcpelauncher-manifest deps/mcpelauncher-updates
+          git submodule update --init --depth 1 deps/Google-Play-API
 
       - name: Tools
         run: brew install cmake ninja
@@ -52,6 +53,12 @@ jobs:
         with:
           path: out/moltenvk
           key: moltenvk-${{ steps.commits.outputs.moltenvk }}-macos-${{ steps.commits.outputs.macos }}
+
+      - name: Cache protobuf
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/protobuf-21.12-macos-${{ steps.commits.outputs.macos }}
+          key: protobuf-21.12-macos-${{ steps.commits.outputs.macos }}
 
       - name: Free disk before building
         run: df -h /

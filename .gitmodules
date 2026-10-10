@@ -16,3 +16,6 @@
 	url = https://github.com/Icehunter/MoltenVK.git
 	branch = fix/vulkan-integer-float-format-mismatch
 	shallow = true
+[submodule "deps/Google-Play-API"]
+	path = deps/Google-Play-API
+	url = https://github.com/minecraft-linux/Google-Play-API.git

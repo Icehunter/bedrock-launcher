@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lays out out/{client,angle,moltenvk,mod} as out/bundle/Contents/, in the same
+# Lays out out/{client,gplay,angle,moltenvk,mod} as out/bundle/Contents/, in the same
 # layout as the official launcher's app, ad-hoc signs every Mach-O file and
 # checks the result with verify-bundle.sh.
 #
@@ -19,6 +19,7 @@ place() {
 }
 
 place "$OUT/client/mcpelauncher-client" "$C/MacOS/mcpelauncher-client"
+place "$OUT/gplay/bedrock-gplay" "$C/MacOS/bedrock-gplay"
 for f in libEGL.dylib libGLESv2.dylib; do
   place "$OUT/angle/$f" "$C/Frameworks/mvk-angle/$f"
 done

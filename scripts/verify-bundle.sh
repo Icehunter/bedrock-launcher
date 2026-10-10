@@ -18,6 +18,7 @@ fail() {
 
 EXPECTED=(
   MacOS/mcpelauncher-client
+  MacOS/bedrock-gplay
   Frameworks/mvk-angle/libEGL.dylib
   Frameworks/mvk-angle/libGLESv2.dylib
   Frameworks/mvk-angle/libMoltenVK.dylib
