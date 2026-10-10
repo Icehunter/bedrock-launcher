@@ -154,10 +154,16 @@ struct SectionTitle: View {
     }
 }
 
-/// The game scenery behind the pages, scaled up with hard pixel edges.
+/// The block-world scenery behind the Play page. Falls back to the small
+/// pixel-art scene when the large image is missing.
 struct Scenery: View {
     var body: some View {
-        if let image = Bundle.module.image(forResource: "scene") {
+        if let image = Bundle.module.image(forResource: "scene-hd") {
+            Image(nsImage: image)
+                .interpolation(.high)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else if let image = Bundle.module.image(forResource: "scene") {
             Image(nsImage: image)
                 .interpolation(.none)
                 .resizable()
