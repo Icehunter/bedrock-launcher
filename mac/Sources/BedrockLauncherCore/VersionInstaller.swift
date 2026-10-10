@@ -8,6 +8,7 @@ public enum VersionInstaller {
         case noArm64Library
         case alreadyInstalled(String)
         case unzipFailed(String)
+        case badName(String)
 
         public var errorDescription: String? {
             switch self {
@@ -15,6 +16,7 @@ public enum VersionInstaller {
             case .noArm64Library: "These APK files have no arm64 game library"
             case .alreadyInstalled(let name): "Minecraft \(name) is already installed"
             case .unzipFailed(let file): "Could not unpack \(file)"
+            case .badName(let name): "\"\(name)\" is not a usable version name"
             }
         }
     }
@@ -61,10 +63,17 @@ public enum VersionInstaller {
             throw Error.noArm64Library
         }
         let manifest = try AndroidManifest.read(file: stage.appendingPathComponent("AndroidManifest.xml"))
+        guard isUsableName(manifest.versionName) else { throw Error.badName(manifest.versionName) }
         let target = versionsFolder.appendingPathComponent(manifest.versionName, isDirectory: true)
         guard !fm.fileExists(atPath: target.path) else { throw Error.alreadyInstalled(manifest.versionName) }
         try fm.moveItem(at: stage, to: target)
         return GameVersion(name: manifest.versionName, folder: target)
+    }
+
+    /// Version names become folder names, so only plain names pass.
+    public static func isUsableName(_ name: String) -> Bool {
+        name != "." && name != ".." && !name.hasPrefix(".")
+            && name.range(of: "^[0-9A-Za-z._-]+$", options: .regularExpression) != nil
     }
 
     static func run(_ tool: String, _ arguments: [String]) throws -> (status: Int32, output: String) {
