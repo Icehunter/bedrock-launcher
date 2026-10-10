@@ -1,0 +1,151 @@
+<title>Bedrock Launcher</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column, run-this-first card on top, source files collapsed below. */
+:root{
+  --bg:#f5f6f4; --panel:#ffffff; --fg:#17201b; --muted:#5b665f; --line:#d9ded9;
+  --accent:#0b7a4b; --accent-fg:#ffffff; --code-bg:#eef1ee; --warn:#9a5b00;
+  --ui:"Figtree",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111613; --panel:#1a211d; --fg:#e7ede9; --muted:#9aa89f; --line:#2c3630;
+  --accent:#3ddc97; --accent-fg:#06210f; --code-bg:#141a17; --warn:#e3a54a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --panel:#1a211d; --fg:#e7ede9; --muted:#9aa89f; --line:#2c3630;
+  --accent:#3ddc97; --accent-fg:#06210f; --code-bg:#141a17; --warn:#e3a54a; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:28px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:2rem;line-height:1.15;margin:0;text-wrap:balance}
+h2{font-size:1.1rem;margin:0 0 10px}
+p{margin:0}
+.sub{color:var(--muted);margin-top:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;min-width:0}
+.run{border-color:var(--accent)}
+ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+code,pre,textarea{font-family:var(--mono);font-size:13px}
+code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre{background:var(--code-bg);margin:0;padding:12px;border-radius:4px;overflow-x:auto;max-height:420px;overflow-y:auto}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:4px;padding:8px 14px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-size:1rem;padding:11px 18px}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.status{color:var(--muted);font-size:13px}
+details{border-top:1px solid var(--line);padding-block:10px}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-family:var(--mono);font-size:13px;display:flex;justify-content:space-between;gap:10px}
+summary span{color:var(--muted)}
+details .row{margin-block:10px}
+textarea{width:100%;min-height:90px;background:var(--code-bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:8px;box-sizing:border-box}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{text-align:left;padding:8px 10px 8px 0;border-top:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-top:0}
+.tag{font-family:var(--mono);font-size:12px;padding:2px 7px;border-radius:3px;border:1px solid var(--line);white-space:nowrap}
+.tag.done{color:var(--accent);border-color:var(--accent)}
+.tag.todo{color:var(--warn);border-color:var(--warn)}
+.scroll{overflow-x:auto}
+</style>
+
+<main>
+  <header>
+    <h1>Bedrock Launcher</h1>
+    <p class="sub">A native macOS app for Apple Silicon that imports your own Bedrock APK or IPA and signs in to Microsoft.</p>
+  </header>
+
+  <section class="card run">
+    <h2>Run it on your Mac</h2>
+    <ol>
+      <li>Press the button. It copies a script that writes the whole project to <code>~/BedrockLauncher</code>.</li>
+      <li>Paste it into Terminal and press Return.</li>
+      <li>Run <code>cd ~/BedrockLauncher &amp;&amp; swift run</code> (needs Xcode or the Command Line Tools; first build takes about 1 to 2 minutes).</li>
+    </ol>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" id="copy-all">Copy install script</button>
+      <span class="status" id="copy-all-status" role="status"></span>
+    </div>
+    <details id="fallback" style="margin-top:12px">
+      <summary>Copy button blocked? Select the script here <span>textarea</span></summary>
+      <textarea id="script-box" readonly></textarea>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>What works now</h2>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Piece</th><th>State</th><th>What to expect</th></tr></thead>
+      <tbody>
+        <tr><td>Import APK / IPA</td><td><span class="tag done">written</span></td><td>Pulls <code>lib/arm64-v8a</code> and <code>assets</code> out of the APK. Split APKs need the arm64 split imported too.</td></tr>
+        <tr><td>Microsoft sign-in</td><td><span class="tag done">written</span></td><td>Device-code flow, then Xbox Live and XSTS tokens, shows your gamertag. Needs your own Azure app client ID (personal accounts, public client flows on).</td></tr>
+        <tr><td>Play (ELF inspect)</td><td><span class="tag done">written</span></td><td>Reads <code>libminecraftpe.so</code> and lists the libraries the loader must provide. Does not start the game.</td></tr>
+        <tr><td>ELF loader + Android shims</td><td><span class="tag todo">next</span></td><td>Map segments, relocate, shim libc/EGL/GLES/JNI, call <code>JNI_OnLoad</code>.</td></tr>
+        <tr><td>Hand the token to the game</td><td><span class="tag todo">after loader</span></td><td>Answer the game's sign-in JNI calls with the XSTS token.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="status" style="margin-top:12px">None of this has been compiled yet. Send me the first compiler error and I will fix it.</p>
+  </section>
+
+  <section class="card">
+    <h2>Source files</h2>
+    <div id="files"></div>
+  </section>
+</main>
+
+<!--FILES-->
+
+<script>
+(function () {
+  var nodes = document.querySelectorAll('script[type="text/plain"][data-path]');
+  var files = [];
+  nodes.forEach(function (n) { files.push({ path: n.getAttribute('data-path'), text: n.textContent.replace(/^\n/, '') }); });
+
+  var script = '#!/bin/bash\nset -e\nmkdir -p ~/BedrockLauncher/Sources/BedrockLauncher\ncd ~/BedrockLauncher\n';
+  files.forEach(function (f, i) {
+    var tag = 'BLEOF' + i;
+    script += "cat > '" + f.path + "' <<'" + tag + "'\n" + f.text.replace(/\n$/, '') + '\n' + tag + '\n';
+  });
+  script += 'echo "Done. Next: cd ~/BedrockLauncher && swift run"\n';
+  var box = document.getElementById('script-box');
+  box.value = script;
+
+  function copy(text, statusEl) {
+    function fallback() {
+      document.getElementById('fallback').open = true;
+      box.focus(); box.select();
+      statusEl.textContent = 'Copy blocked. Script is selected below: press Cmd+C.';
+    }
+    try {
+      navigator.clipboard.writeText(text).then(
+        function () { statusEl.textContent = 'Copied.'; },
+        fallback);
+    } catch (e) { fallback(); }
+  }
+
+  document.getElementById('copy-all').addEventListener('click', function () {
+    copy(script, document.getElementById('copy-all-status'));
+  });
+
+  var host = document.getElementById('files');
+  files.forEach(function (f) {
+    var d = document.createElement('details');
+    var s = document.createElement('summary');
+    var name = document.createElement('b'); name.textContent = f.path;
+    var count = document.createElement('span'); count.textContent = f.text.split('\n').length + ' lines';
+    s.appendChild(name); s.appendChild(count);
+    var row = document.createElement('div'); row.className = 'row';
+    var b = document.createElement('button'); b.textContent = 'Copy file';
+    var st = document.createElement('span'); st.className = 'status'; st.setAttribute('role', 'status');
+    b.addEventListener('click', function () {
+      try {
+        navigator.clipboard.writeText(f.text).then(
+          function () { st.textContent = 'Copied.'; },
+          function () { st.textContent = 'Copy blocked. Select the text below.'; });
+      } catch (e) { st.textContent = 'Copy blocked. Select the text below.'; }
+    });
+    row.appendChild(b); row.appendChild(st);
+    var pre = document.createElement('pre'); pre.textContent = f.text;
+    d.appendChild(s); d.appendChild(row); d.appendChild(pre);
+    host.appendChild(d);
+  });
+})();
+</script>
