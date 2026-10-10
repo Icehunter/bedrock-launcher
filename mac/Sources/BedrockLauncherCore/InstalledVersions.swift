@@ -16,10 +16,12 @@ public struct GameVersion: Equatable, Comparable, Sendable {
 
 public enum InstalledVersions {
     /// Folders that hold `lib/arm64-v8a/libminecraftpe.so`, oldest first.
+    /// Hidden folders, such as installs still in progress, are left out.
     public static func list(versionsFolder: URL) -> [GameVersion] {
         let fm = FileManager.default
         let names = (try? fm.contentsOfDirectory(atPath: versionsFolder.path)) ?? []
         return names
+            .filter { !$0.hasPrefix(".") }
             .map { GameVersion(name: $0, folder: versionsFolder.appendingPathComponent($0, isDirectory: true)) }
             .filter { fm.fileExists(atPath: $0.folder.appendingPathComponent("lib/arm64-v8a/libminecraftpe.so").path) }
             .sorted()
