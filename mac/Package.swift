@@ -1,10 +1,21 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
     name: "BedrockLauncher",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v15)],
+    products: [
+        .executable(name: "BedrockLauncher", targets: ["BedrockLauncher"]),
+        .executable(name: "mcpelauncher-webview", targets: ["mcpelauncher-webview"]),
+    ],
     targets: [
-        .executableTarget(name: "BedrockLauncher", path: "Sources/BedrockLauncher")
+        .target(name: "BedrockLauncherCore"),
+        .executableTarget(
+            name: "BedrockLauncher",
+            dependencies: ["BedrockLauncherCore"],
+            resources: [.process("Resources")]
+        ),
+        .executableTarget(name: "mcpelauncher-webview", dependencies: ["BedrockLauncherCore"]),
+        .testTarget(name: "BedrockLauncherCoreTests", dependencies: ["BedrockLauncherCore"]),
     ]
 )
