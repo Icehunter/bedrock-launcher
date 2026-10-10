@@ -15,9 +15,26 @@ The launcher has these pages:
 - Content: install `.mcpack`, `.mcaddon` and `.mcworld` files, open `minecraft://` links, open
   the game folders, link pack folders you are working on, and see the pack errors from the last
   run.
-- Versions: the installed game versions.
+- Versions: get the game, and export, import or delete game versions.
 - Game Log: the game's output while it runs.
 - Settings: launcher options.
+
+## Getting the game
+
+The game comes from Google Play, through your own Google account. There are two ways to get it:
+
+- Download: on the Versions page, pick a version and click Download from Google Play. The
+  launcher asks you to sign in to Google the first time. It only offers versions it is tested
+  with, listed in `tested-versions.json`.
+- Import: click Import Files and pick either the APK files Google Play gives for one version, or
+  a `.mcversion` file.
+
+Export, next to each installed version, saves it as one `.mcversion` file. Copy that file to
+another Mac and import it there, for example to set up a child's Mac without signing in to Google
+on it. Google sign-in is only needed for Download. Settings has the sign out button.
+
+A red bar at the top means Google Play has a newer Minecraft than the launcher is tested with.
+Downloads stay on the newest tested version until the launcher is updated.
 
 The app is not signed with an Apple Developer ID yet. The first time you open it, macOS blocks it:
 open System Settings, go to Privacy & Security, and click Open Anyway next to Bedrock Launcher.
