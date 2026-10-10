@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Checks a client bundle: every expected file is there, every Mach-O file
 # links only system libraries or paths inside the bundle, needs no macOS
-# newer than 14.0, is arm64 and has a valid signature, and no game file is
+# newer than scripts/macos-min-version, is arm64 and has a valid signature, and no game file is
 # included.
 #
 # Usage: scripts/verify-bundle.sh <bundle>/Contents
 set -uo pipefail
 
 CONTENTS="${1:?usage: verify-bundle.sh <bundle>/Contents}"
-MAX_MINOS="14.0"
+MAX_MINOS="$(cat "$(cd "$(dirname "$0")" && pwd)/macos-min-version")"
 failed=0
 
 fail() {
@@ -37,7 +37,7 @@ for f in "${EXPECTED[@]}"; do
   [ -f "$CONTENTS/$f" ] || fail "missing $f"
 done
 
-# Version strings like 14.0 or 13.5.1: true when $1 is newer than $2.
+# Version strings like 15.0 or 14.5.1: true when $1 is newer than $2.
 version_gt() {
   [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]
 }

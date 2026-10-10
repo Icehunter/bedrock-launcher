@@ -34,7 +34,11 @@ the `bedrock-macos` branch: `libc-shim`, `minecraft-imported-symbols`, `mcpelaun
 
 ## Building
 
-Needs an Apple Silicon Mac with:
+The bundle runs on every macOS release Apple still sends security updates to, and no older
+one. `scripts/macos-min-version` holds the oldest such release; raise it when Apple stops
+updating that release, and every part is rebuilt for the new version.
+
+Building needs an Apple Silicon Mac with:
 
 - Xcode (from the App Store), opened once so it finishes setting up
 - [Homebrew](https://brew.sh), then `brew install cmake ninja python3`

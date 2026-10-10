@@ -3,7 +3,8 @@
 # with libcurl (websockets on) and OpenSSL linked in statically, plus the
 # controller mapping file and the Android support libraries it loads.
 #
-# OpenSSL is built from source for macOS 14, because Homebrew's static
+# OpenSSL is built from source for the macOS version in
+# scripts/macos-min-version, because Homebrew's static
 # libraries target the macOS version of the machine that built them.
 set -euo pipefail
 
@@ -11,9 +12,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/deps/mcpelauncher-manifest"
 BUILD="$ROOT/out/build-client"
 OUT="$ROOT/out/client"
+MACOS_MIN="$(cat "$ROOT/scripts/macos-min-version")"
 OPENSSL_VERSION="3.5.9"
 OPENSSL_SHA256="603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"
-OPENSSL="$ROOT/.cache/openssl-$OPENSSL_VERSION"
+OPENSSL="$ROOT/.cache/openssl-$OPENSSL_VERSION-macos-$MACOS_MIN"
 
 build_openssl() {
   [ -f "$OPENSSL/lib/libcrypto.a" ] && [ -f "$OPENSSL/lib/libssl.a" ] && return
@@ -34,7 +36,7 @@ build_openssl() {
   tar -xzf "$tarball" -C "$src" --strip-components 1
   (
     cd "$src"
-    export MACOSX_DEPLOYMENT_TARGET=14.0
+    export MACOSX_DEPLOYMENT_TARGET="$MACOS_MIN"
     ./Configure darwin64-arm64-cc no-shared no-tests no-docs --prefix="$OPENSSL" --libdir=lib
     make -j"$(sysctl -n hw.ncpu)"
     make install_sw
@@ -46,12 +48,12 @@ build_openssl
 
 # The bundled curl is built as a separate project, so it gets the target twice:
 # through CURL_EXT_EXTRA_OPTIONS and through the environment.
-export MACOSX_DEPLOYMENT_TARGET=14.0
+export MACOSX_DEPLOYMENT_TARGET="$MACOS_MIN"
 cmake -S "$SRC" -B "$BUILD" -G Ninja \
-  -DCURL_EXT_EXTRA_OPTIONS="-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0;-DCMAKE_OSX_ARCHITECTURES=arm64" \
+  -DCURL_EXT_EXTRA_OPTIONS="-DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOS_MIN;-DCMAKE_OSX_ARCHITECTURES=arm64" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_MIN" \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
   -DBUILD_UI=OFF \
   -DBUILD_WEBVIEW=OFF \

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds ANGLE's libEGL and libGLESv2 from deps/angle into out/angle/.
 # Fetches depot_tools into .cache/ when missing, and ANGLE's third-party code
-# with gclient. Skips the build when out/angle/.commit matches the submodule.
+# with gclient. Targets the macOS version in scripts/macos-min-version. Skips
+# the build when out/angle/.commit matches the submodule commit and that version.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,8 +10,10 @@ SRC="$ROOT/deps/angle"
 OUT="$ROOT/out/angle"
 DEPOT="$ROOT/.cache/depot_tools"
 COMMIT="$(git -C "$SRC" rev-parse HEAD)"
+MACOS_MIN="$(cat "$ROOT/scripts/macos-min-version")"
+STAMP="$COMMIT macos-$MACOS_MIN"
 
-if [ -f "$OUT/.commit" ] && [ "$(cat "$OUT/.commit")" = "$COMMIT" ] \
+if [ -f "$OUT/.commit" ] && [ "$(cat "$OUT/.commit")" = "$STAMP" ] \
   && [ -f "$OUT/libEGL.dylib" ] && [ -f "$OUT/libGLESv2.dylib" ]; then
   echo "build-angle: up to date"
   exit 0
@@ -31,7 +34,11 @@ if [ ! -f .gclient ]; then
 fi
 gclient sync -D --no-history
 mkdir -p out/mac
-/bin/cp "$ROOT/scripts/angle-args.gn" out/mac/args.gn
+{
+  cat "$ROOT/scripts/angle-args.gn"
+  echo "mac_deployment_target = \"$MACOS_MIN\""
+  echo "mac_min_system_version = \"$MACOS_MIN\""
+} >out/mac/args.gn
 gn gen out/mac
 autoninja -C out/mac libEGL libGLESv2
 
@@ -42,5 +49,5 @@ for f in libEGL.dylib libGLESv2.dylib; do
   # ANGLE builds these with a relative install name; give them a bundle-safe one.
   install_name_tool -id "@rpath/$f" "$OUT/$f"
 done
-echo "$COMMIT" >"$OUT/.commit"
+echo "$STAMP" >"$OUT/.commit"
 echo "build-angle: built $COMMIT"

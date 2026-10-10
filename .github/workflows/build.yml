@@ -35,18 +35,19 @@ jobs:
         run: |
           echo "angle=$(git -C deps/angle rev-parse HEAD)" >>"$GITHUB_OUTPUT"
           echo "moltenvk=$(git -C deps/MoltenVK rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+          echo "macos=$(cat scripts/macos-min-version)" >>"$GITHUB_OUTPUT"
 
       - name: Cache ANGLE
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: out/angle
-          key: angle-${{ steps.commits.outputs.angle }}
+          key: angle-${{ steps.commits.outputs.angle }}-macos-${{ steps.commits.outputs.macos }}
 
       - name: Cache MoltenVK
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: out/moltenvk
-          key: moltenvk-${{ steps.commits.outputs.moltenvk }}
+          key: moltenvk-${{ steps.commits.outputs.moltenvk }}-macos-${{ steps.commits.outputs.macos }}
 
       - name: Free disk before building
         run: df -h /
