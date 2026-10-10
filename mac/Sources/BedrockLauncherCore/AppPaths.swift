@@ -17,6 +17,10 @@ public struct AppPaths: Sendable {
     public var versions: URL { root.appendingPathComponent("versions", isDirectory: true) }
     public var logs: URL { root.appendingPathComponent("logs", isDirectory: true) }
     public var profilesFile: URL { root.appendingPathComponent("profiles.json") }
+    /// The Google Play helper's device identity and saved token.
+    public var google: URL { root.appendingPathComponent("google", isDirectory: true) }
+    /// Downloaded APK files, one folder per version code.
+    public var apks: URL { root.appendingPathComponent("apks", isDirectory: true) }
 
     public func gameFolder(version: String) -> URL {
         versions.appendingPathComponent(version, isDirectory: true)
