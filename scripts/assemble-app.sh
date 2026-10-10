@@ -4,6 +4,11 @@
 #
 # The version is the git tag when HEAD is tagged (v1.2.3 gives 1.2.3), and
 # "development" otherwise, which turns off the update check.
+#
+# SIGN_IDENTITY picks the signing certificate, for example
+# "Developer ID Application: Ryan Wilson (HVY78N7EUW)". Unset, the app is
+# ad-hoc signed. A real identity also turns on the hardened runtime, with the
+# exceptions in mac/client.entitlements for the game client.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,15 +42,25 @@ sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s/@MACOS_MIN@/$MACOS_M
   "$ROOT/mac/Info.plist.in" >"$C/Info.plist"
 plutil -lint "$C/Info.plist" >/dev/null
 
+IDENTITY="${SIGN_IDENTITY:--}"
+SIGN=(codesign --force -s "$IDENTITY")
+if [ "$IDENTITY" != "-" ]; then
+  SIGN+=(--options runtime --timestamp)
+fi
+
 # Sign every Mach-O file first, then the app as a whole. macOS treats every
 # file under Frameworks as code, so the MoltenVK JSON there is signed too
 # (its signature goes in extended attributes).
 while IFS= read -r -d '' f; do
   if file -b "$f" | grep -q '^Mach-O' || [[ "$f" == "$C/Frameworks/"* ]]; then
-    codesign --force -s - "$f"
+    if [ "$f" = "$C/MacOS/mcpelauncher-client" ] && [ "$IDENTITY" != "-" ]; then
+      "${SIGN[@]}" --entitlements "$ROOT/mac/client.entitlements" "$f"
+    else
+      "${SIGN[@]}" "$f"
+    fi
   fi
 done < <(find "$C" -type f -print0)
-codesign --force -s - "$APP"
+"${SIGN[@]}" "$APP"
 
 "$ROOT/scripts/verify-bundle.sh" "$C"
 codesign --verify --deep --strict "$APP"
