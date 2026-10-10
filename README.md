@@ -38,8 +38,17 @@ the `bedrock-macos` branch: `libc-shim`, `minecraft-imported-symbols`, `mcpelaun
 scripts/sync-forks.sh
 ```
 
-This moves every fork's fix branch onto the newest upstream code, pushes it, and commits the new
-submodule commits here. If a fix does not apply cleanly, the script stops, names the repo,
-and pushes nothing for it. Fix that repo's branch by hand, then run the script again.
+This moves every fork's fix branch onto the newest upstream code and rebuilds the
+`mcpelauncher-manifest` fix branch on top of upstream, pointing it at the new fork commits. Then
+it commits the new submodule commits here; push them when ready.
 
-`SYNC_FORKS_ONLY=<repo>` syncs a single fork.
+The script rebases every fork first and pushes only if all of them rebase cleanly. If one does
+not, it names the repo and pushes nothing. Fix that repo's branch by hand, then run the script
+again. Before a branch is replaced, its old commit is kept under a
+`bedrock-macos-archive/<time>/<branch>` tag, so older checkouts of this repo can still fetch it.
+
+| Setting | Effect |
+|---|---|
+| `SYNC_FORKS_ONLY="repo ..."` | Sync only these forks. Submodule commits here are not updated. |
+| `SYNC_FORKS_BRANCH="repo=branch ..."` | Use another branch for these forks. |
+| `SYNC_FORKS_DRY_RUN=1` | Do everything except push, and show what would change. |
