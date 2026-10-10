@@ -48,7 +48,7 @@ struct ContentPage: View {
             VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Install")
                 HStack(spacing: 10) {
-                    Button("INSTALL CONTENT…") { pickContent() }
+                    Button("INSTALL CONTENT…") { model.pickAndInstallContent() }
                         .buttonStyle(ChunkyButtonStyle(kind: .green))
                     Text("A .mcpack, .mcaddon or .mcworld file. The game starts and imports it.")
                         .font(.system(size: 11)).foregroundStyle(Theme.dimText)
@@ -63,16 +63,6 @@ struct ContentPage: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func pickContent() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = ["mcpack", "mcaddon", "mcworld"].compactMap { UTType(filenameExtension: $0) }
-        panel.allowsOtherFileTypes = false
-        panel.prompt = "Install"
-        if panel.runModal() == .OK, let url = panel.url {
-            model.play(extraArguments: ["-ifp", url.path])
         }
     }
 

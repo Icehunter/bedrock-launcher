@@ -1,6 +1,7 @@
 import AppKit
 import BedrockLauncherCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum Page: CaseIterable {
     case play, content, versions, mods, log, settings
@@ -48,6 +49,8 @@ final class LauncherModel: ObservableObject {
     @Published private(set) var profileList: [Profile] = []
     @Published var selectedProfileID: UUID
     @Published var updateNotice: UpdateCheck.Release?
+    /// When the last game session ended and how; kept between launches.
+    @Published private(set) var lastSession: (ended: Date, exitCode: Int32)?
 
     private var runner: GameRunner?
     private var logRefreshPending = false
@@ -73,11 +76,25 @@ final class LauncherModel: ObservableObject {
             bundleContents = Bundle.main.bundleURL.appendingPathComponent("Contents", isDirectory: true)
         }
         refresh()
+        if let ended = UserDefaults.standard.object(forKey: "lastSessionEnded") as? Date {
+            lastSession = (ended, Int32(UserDefaults.standard.integer(forKey: "lastSessionExitCode")))
+        }
         if settings.checkForUpdates {
             Task { [weak self] in
                 let release = await UpdateCheck.newerRelease(than: AppInfo.version)
                 self?.updateNotice = release
             }
+        }
+    }
+
+    /// Asks for a .mcpack, .mcaddon or .mcworld and starts the game to import it.
+    func pickAndInstallContent() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = ["mcpack", "mcaddon", "mcworld"].compactMap { UTType(filenameExtension: $0) }
+        panel.allowsOtherFileTypes = false
+        panel.prompt = "Install"
+        if panel.runModal() == .OK, let url = panel.url {
+            play(extraArguments: ["-ifp", url.path])
         }
     }
 
@@ -181,8 +198,8 @@ final class LauncherModel: ObservableObject {
             Task { @MainActor in self?.scheduleLogRefresh() }
         }
         let runner = GameRunner(log: log)
-        runner.onExit = { [weak self] _ in
-            Task { @MainActor in self?.gameExited() }
+        runner.onExit = { [weak self] code in
+            Task { @MainActor in self?.gameExited(code: code) }
         }
         logLines = []
         do {
@@ -211,9 +228,12 @@ final class LauncherModel: ObservableObject {
         }
     }
 
-    private func gameExited() {
+    private func gameExited(code: Int32) {
         logLines = runner?.log.lines ?? logLines
         isRunning = false
+        lastSession = (Date(), code)
+        UserDefaults.standard.set(Date(), forKey: "lastSessionEnded")
+        UserDefaults.standard.set(Int(code), forKey: "lastSessionExitCode")
         if settings.hideWhilePlaying {
             NSApp.unhide(nil)
             NSApp.activate()
