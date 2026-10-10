@@ -1,0 +1,67 @@
+name: build
+
+on:
+  push:
+    branches: [main, 'feature/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: macos-15
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # ANGLE is cloned without its own submodules; gclient fetches what it needs.
+      - name: Submodules
+        run: |
+          git submodule update --init --depth 1 deps/angle deps/MoltenVK
+          git submodule update --init --recursive deps/mcpelauncher-manifest deps/mcpelauncher-updates
+
+      - name: Tools
+        run: brew install cmake ninja
+
+      - name: Android NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370" >/dev/null
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/30.0.16248370" >>"$GITHUB_ENV"
+
+      - name: Submodule commits
+        id: commits
+        run: |
+          echo "angle=$(git -C deps/angle rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+          echo "moltenvk=$(git -C deps/MoltenVK rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+
+      - name: Cache ANGLE
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/angle
+          key: angle-${{ steps.commits.outputs.angle }}
+
+      - name: Cache MoltenVK
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/moltenvk
+          key: moltenvk-${{ steps.commits.outputs.moltenvk }}
+
+      - name: Free disk before building
+        run: df -h /
+
+      - name: Build
+        run: scripts/build.sh
+
+      - name: Package
+        run: |
+          cd out
+          ditto -c -k --keepParent bundle bedrock-launcher-bundle.zip
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bedrock-launcher-bundle
+          path: out/bedrock-launcher-bundle.zip
+          if-no-files-found: error
