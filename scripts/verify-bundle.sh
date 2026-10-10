@@ -51,17 +51,22 @@ while IFS= read -r -d '' f; do
       /usr/lib/* | /System/* | @rpath/* | @loader_path/* | @executable_path/*) ;;
       *) fail "$rel links $dep" ;;
     esac
-  done < <(otool -L "$f" | tail -n +2 | awk '{print $1}')
+  done < <(otool -L "$f" | grep -v ':$' | awk '{print $1}')
 
-  minos="$(otool -l "$f" | awk '/LC_BUILD_VERSION/{found=1} found && $1=="minos"{print $2; exit}')"
-  if [ -z "$minos" ]; then
-    minos="$(otool -l "$f" | awk '/LC_VERSION_MIN_MACOSX/{found=1} found && $1=="version"{print $2; exit}')"
-  fi
-  if [ -z "$minos" ]; then
+  # One value per architecture slice; universal files have several.
+  minos_list="$(otool -arch all -l "$f" | awk '
+    /LC_BUILD_VERSION/ {b=1; next}
+    /LC_VERSION_MIN_MACOSX/ {v=1; next}
+    b && $1=="minos" {print $2; b=0}
+    v && $1=="version" {print $2; v=0}')"
+  if [ -z "$minos_list" ]; then
     fail "$rel has no minimum macOS version"
-  elif version_gt "$minos" "$MAX_MINOS"; then
-    fail "$rel needs macOS $minos, newer than $MAX_MINOS"
   fi
+  for minos in $minos_list; do
+    if version_gt "$minos" "$MAX_MINOS"; then
+      fail "$rel needs macOS $minos, newer than $MAX_MINOS"
+    fi
+  done
 
   lipo -archs "$f" 2>/dev/null | grep -qw arm64 || fail "$rel is not arm64"
   codesign --verify "$f" 2>/dev/null || fail "$rel has no valid signature"
