@@ -10,16 +10,11 @@ permissions:
   contents: read
 
 jobs:
+  # Branch pushes build the app, ad-hoc signed, and keep it as an artifact.
   bundle:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: macos-15
     timeout-minutes: 300
-    permissions:
-      # Version tags publish a GitHub Release.
-      contents: write
-    env:
-      # Version tags and manual runs are signed with the Developer ID and
-      # notarized; other pushes are ad-hoc signed.
-      RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -49,6 +44,7 @@ jobs:
         run: |
           echo "angle=$(git -C deps/angle rev-parse HEAD)" >>"$GITHUB_OUTPUT"
           echo "moltenvk=$(git -C deps/MoltenVK rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+          echo "updates=$(git -C deps/mcpelauncher-updates rev-parse HEAD)" >>"$GITHUB_OUTPUT"
           echo "macos=$(cat scripts/macos-min-version)" >>"$GITHUB_OUTPUT"
 
       - name: Cache ANGLE
@@ -62,6 +58,12 @@ jobs:
         with:
           path: out/moltenvk
           key: moltenvk-${{ steps.commits.outputs.moltenvk }}-macos-${{ steps.commits.outputs.macos }}
+
+      - name: Cache updates mod
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/mod
+          key: mod-${{ steps.commits.outputs.updates }}-ndk-30.0.16248370
 
       - name: Cache OpenSSL
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -86,8 +88,58 @@ jobs:
       - name: Free disk before building
         run: df -h /
 
+      - name: Build
+        run: |
+          scripts/build.sh
+          ccache --show-stats
+
+      - name: Disk image
+        run: |
+          scripts/make-dmg.sh
+          ditto -c -k --keepParent "out/Bedrock Launcher.app" out/Bedrock-Launcher-app.zip
+
+      - name: Upload disk image
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Bedrock-Launcher
+          path: out/Bedrock-Launcher.dmg
+          if-no-files-found: error
+
+      # The release job signs this copy, so a tag never builds again.
+      - name: Upload app
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Bedrock-Launcher-app
+          path: out/Bedrock-Launcher-app.zip
+          if-no-files-found: error
+
+  # Version tags take the app main built for the same commit, sign it with the
+  # Developer ID, notarize it and publish a GitHub Release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: App from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN="$(gh run list --workflow build.yml --branch main --commit "$GITHUB_SHA" --status success \
+            --json databaseId --jq '.[0].databaseId')"
+          if [ -z "$RUN" ]; then
+            echo "::error::No green main build for $GITHUB_SHA. Push it to main, wait for the build, then tag it."
+            exit 1
+          fi
+          echo "Using the app from main build $RUN"
+          gh run download "$RUN" --name Bedrock-Launcher-app --dir out
+          ditto -x -k out/Bedrock-Launcher-app.zip out
+
       - name: Signing keychain
-        if: env.RELEASE_BUILD == 'true'
         env:
           CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
@@ -108,10 +160,8 @@ jobs:
           test -n "$IDENTITY"
           echo "SIGN_IDENTITY=$IDENTITY" >>"$GITHUB_ENV"
 
-      - name: Build
-        run: |
-          scripts/build.sh
-          ccache --show-stats
+      - name: Sign
+        run: APP_VERSION="${GITHUB_REF_NAME#v}" scripts/sign-app.sh "out/Bedrock Launcher.app"
 
       - name: Disk image
         env:
@@ -119,22 +169,12 @@ jobs:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: |
-          if [ "$RELEASE_BUILD" = true ]; then
-            export NOTARY_KEY_FILE="$RUNNER_TEMP/notary.p8"
-            echo "$NOTARY_KEY_P8" | base64 --decode >"$NOTARY_KEY_FILE"
-          fi
+          export NOTARY_KEY_FILE="$RUNNER_TEMP/notary.p8"
+          echo "$NOTARY_KEY_P8" | base64 --decode >"$NOTARY_KEY_FILE"
           scripts/make-dmg.sh
-          rm -f "$RUNNER_TEMP/notary.p8"
-
-      - name: Upload
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: Bedrock-Launcher
-          path: out/Bedrock-Launcher.dmg
-          if-no-files-found: error
+          rm -f "$NOTARY_KEY_FILE"
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -143,5 +183,5 @@ jobs:
             --verify-tag --title "Bedrock Launcher ${GITHUB_REF_NAME#v}" --generate-notes
 
       - name: Remove signing keychain
-        if: always() && env.RELEASE_BUILD == 'true'
+        if: always()
         run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true

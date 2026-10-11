@@ -4,6 +4,8 @@
 # v26.40.1 release (replacement libPlayFabMultiplayer.so and libmaesdk.so).
 #
 # Needs the Android NDK: ANDROID_NDK_ROOT, else the Android Studio default.
+# Skips the build when the mod's commit, the NDK and the patches zip are the
+# same as last time (recorded in out/mod/mcpelauncher-updates/.commit).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,6 +30,13 @@ if [ "$(shasum -a 256 "$PATCHES_ZIP" | cut -d' ' -f1)" != "$PATCHES_SHA256" ]; t
   exit 1
 fi
 
+COMMIT="$(git -C "$SRC" rev-parse HEAD)"
+STAMP="$COMMIT ndk-$(basename "$NDK") patches-$PATCHES_SHA256"
+if [ -f "$OUT/libmcpelauncher-updates.so" ] && [ "$(cat "$OUT/.commit" 2>/dev/null)" = "$STAMP" ]; then
+  echo "build-mod: up to date"
+  exit 0
+fi
+
 PROTOC_BUILD="$ROOT/out/build-mod/protoc"
 MOD_BUILD="$ROOT/out/build-mod/arm64"
 cmake -S "$SRC/protobuf" -B "$PROTOC_BUILD" -DCMAKE_BUILD_TYPE=Release \
@@ -49,4 +58,5 @@ mkdir -p "$UNPACK" "$OUT"
 unzip -q "$PATCHES_ZIP" -d "$UNPACK"
 /bin/cp "$MOD_BUILD/libmcpelauncher-updates.so" "$OUT/"
 /bin/cp -R "$UNPACK/patches" "$OUT/patches"
-echo "build-mod: built"
+echo "$STAMP" >"$OUT/.commit"
+echo "build-mod: built $COMMIT"
