@@ -102,3 +102,11 @@ body { background: var(--background); color: var(--foreground); font-family: var
   border: 2px solid var(--bl-edge);
   box-shadow: inset 0 2px 0 var(--bl-slate-light), 0 16px 40px rgb(0 0 0 / 0.55);
 }
+
+.release-notes { line-height: 1.65; overflow-wrap: anywhere; }
+.release-notes p { margin: .5rem 0; }
+.release-notes ul { list-style: disc; padding-left: 1.25rem; }
+.release-notes ol { list-style: decimal; padding-left: 1.25rem; }
+.release-notes a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.release-notes h1, .release-notes h2, .release-notes h3 { font-weight: 800; margin: 1rem 0 .25rem; }
+.release-notes code { font-family: ui-monospace, Menlo, monospace; font-size: .875em; }
