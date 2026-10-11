@@ -1,17 +1,19 @@
 // bedrock-gplay: the launcher's Google Play helper.
 //
 //   bedrock-gplay login    --state DIR                      (oauth token on stdin)
-//   bedrock-gplay latest   --state DIR
-//   bedrock-gplay download --state DIR --version-code N --out DIR
+//   bedrock-gplay latest   --state DIR                      (email, token on stdin)
+//   bedrock-gplay download --state DIR --version-code N --out DIR   (same)
 //
 // Prints one result per line on stdout:
 //   email <address>
+//   token <saved Google token>       (login only; the launcher keeps it in Keychain)
 //   version-code <n>
 //   progress <name> <done> <total>
 //   file <absolute path>
 // Exit codes: 0 done, 2 bad arguments, 3 not signed in or token refused,
 // 1 anything else. Errors go to stderr as "error auth <text>" or "error <text>".
-// The state folder holds the device identity and the saved Google token.
+// The state folder holds the device identity and short-lived service cookies.
+// The long-lived Google token is never written to disk here.
 #include <playapi/api.h>
 #include <playapi/checkin.h>
 #include <playapi/device_info.h>
@@ -67,7 +69,6 @@ void line(const std::string& s) {
 }
 
 struct session {
-    app_config conf{"playdl.conf"};
     device_info device;
     device_config dev_state{"device.conf.state"};
     file_login_cache login_cache{"token_cache.conf"};
@@ -98,15 +99,12 @@ struct session {
         }
         if (!login.has_token())
             throw auth_error("Google did not return a token");
-        conf.user_email = login.get_email();
-        conf.user_token = login.get_token();
-        conf.save();
     }
 
-    void use_saved_token() {
-        if (conf.user_token.empty())
+    void use_token(const std::string& email, const std::string& token) {
+        if (token.empty())
             throw auth_error("not signed in");
-        login.set_token(conf.user_email, conf.user_token);
+        login.set_token(email, token);
         try {
             login.verify()->call();
         } catch (std::runtime_error& e) {
@@ -261,10 +259,14 @@ int run(int argc, char** argv) {
         s.sign_in(token);
         s.connect();
         line("email " + s.login.get_email());
+        line("token " + s.login.get_token());
         return 0;
     }
 
-    s.use_saved_token();
+    std::string email, token;
+    std::getline(std::cin, email);
+    std::getline(std::cin, token);
+    s.use_token(email, token);
     s.connect();
     if (cmd == "latest") {
         auto details = s.play.details(APP)->call().payload().detailsresponse().docv2();
