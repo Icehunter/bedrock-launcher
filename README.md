@@ -117,3 +117,27 @@ again. Before a branch is replaced, its old commit is kept under a
 | `SYNC_FORKS_ONLY="repo ..."` | Sync only these forks. Submodule commits here are not updated. |
 | `SYNC_FORKS_BRANCH="repo=branch ..."` | Use another branch for these forks. |
 | `SYNC_FORKS_DRY_RUN=1` | Do everything except push, and show what would change. |
+
+## License
+
+Bedrock Launcher is free software under the GNU General Public License, version 3. See
+[LICENSE](LICENSE).
+
+The app ships these parts, each under its own license:
+
+| Part | License |
+|---|---|
+| mcpelauncher client and its libraries (minecraft-linux) | GPL-3.0 |
+| mcpelauncher-updates | MIT |
+| Google-Play-API | Apache-2.0 |
+| ANGLE | BSD-3-Clause |
+| MoltenVK | Apache-2.0 |
+| OpenSSL | Apache-2.0 |
+| curl | curl license (MIT style) |
+| protobuf | BSD-3-Clause |
+
+The source for every part is in this repo and the forks it links to under `deps/`.
+
+Minecraft is a trademark of Mojang Synergies AB. This project is not made by, or connected to,
+Mojang or Microsoft. The game is not included; each player gets it from Google Play with their own
+account.
