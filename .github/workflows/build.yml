@@ -4,6 +4,10 @@ on:
   push:
     branches: [main, 'feature/**']
     tags: ['v*']
+    # Website-only pushes skip the app build. Tags still build: path filters do not apply to tags.
+    paths-ignore:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -132,7 +136,7 @@ jobs:
           RUN="$(gh run list --workflow build.yml --branch main --commit "$GITHUB_SHA" --status success \
             --json databaseId --jq '.[0].databaseId')"
           if [ -z "$RUN" ]; then
-            echo "::error::No green main build for $GITHUB_SHA. Push it to main, wait for the build, then tag it."
+            echo "::error::No green main build for $GITHUB_SHA. Push it to main and wait for the build, then tag it. A commit that only changed the website has no build: run the build workflow by hand on main first."
             exit 1
           fi
           echo "Using the app from main build $RUN"
