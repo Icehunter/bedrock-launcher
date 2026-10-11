@@ -67,4 +67,6 @@ done < <(find "$C" -type f -print0)
 
 "$ROOT/scripts/verify-bundle.sh" "$C"
 codesign --verify --deep --strict "$APP"
+# The app must find its images inside itself, not in this Mac's build folder.
+BEDROCK_RESOURCES_STRICT=1 "$C/MacOS/BedrockLauncher" --check-resources
 echo "assemble-app: built $APP ($VERSION, build $BUILD)"

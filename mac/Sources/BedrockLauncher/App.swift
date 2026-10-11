@@ -6,6 +6,11 @@ struct BedrockLauncherApp: App {
     @StateObject private var model = LauncherModel()
 
     init() {
+        // Used by scripts/assemble-app.sh to check the built app finds its images.
+        if CommandLine.arguments.contains("--check-resources") {
+            print(AppResources.loads ? "resources: ok" : "resources: missing")
+            exit(AppResources.loads ? 0 : 1)
+        }
         NSApplication.shared.setActivationPolicy(.regular)
     }
 

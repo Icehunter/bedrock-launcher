@@ -26,7 +26,7 @@ enum Theme {
 
     /// A pixel icon from the app's resources, drawn without smoothing.
     static func icon(_ name: String) -> Image {
-        if let image = Bundle.module.image(forResource: name) {
+        if let image = AppResources.bundle?.image(forResource: name) {
             return Image(nsImage: image).interpolation(.none)
         }
         return Image(systemName: "questionmark.square")
@@ -158,12 +158,12 @@ struct SectionTitle: View {
 /// pixel-art scene when the large image is missing.
 struct Scenery: View {
     var body: some View {
-        if let image = Bundle.module.image(forResource: "scene-hd") {
+        if let image = AppResources.bundle?.image(forResource: "scene-hd") {
             Image(nsImage: image)
                 .interpolation(.high)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-        } else if let image = Bundle.module.image(forResource: "scene") {
+        } else if let image = AppResources.bundle?.image(forResource: "scene") {
             Image(nsImage: image)
                 .interpolation(.none)
                 .resizable()
@@ -171,5 +171,28 @@ struct Scenery: View {
         } else {
             LinearGradient(colors: [Theme.rgb(0x7DB7E8), Theme.rgb(0x5B8F43)], startPoint: .top, endPoint: .bottom)
         }
+    }
+}
+
+/// The app's images and art. SwiftPM's own `Bundle.module` looks only at the
+/// `.app` folder itself and at the build folder of the Mac that built it, and
+/// stops the app when neither exists. The bundle sits in Contents/Resources,
+/// so that is checked first. `swift run` falls back to `Bundle.module`, unless
+/// BEDROCK_RESOURCES_STRICT is set.
+enum AppResources {
+    static let bundleName = "BedrockLauncher_BedrockLauncher.bundle"
+
+    static let bundle: Bundle? = {
+        if let url = Bundle.main.resourceURL?.appendingPathComponent(bundleName),
+           let found = Bundle(url: url) {
+            return found
+        }
+        if ProcessInfo.processInfo.environment["BEDROCK_RESOURCES_STRICT"] != nil { return nil }
+        return Bundle.module
+    }()
+
+    /// True when the icons and the Play page picture load.
+    static var loads: Bool {
+        bundle?.image(forResource: "app") != nil && bundle?.image(forResource: "scene-hd") != nil
     }
 }
