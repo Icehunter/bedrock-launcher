@@ -17,7 +17,11 @@ export function Hero() {
           <BlockButton tone="green" href={DOWNLOAD_URL}>
             Download for Mac
           </BlockButton>
-          <BlockButton tone="slate" onClick={() => document.getElementById("how")?.scrollIntoView()}>
+          <BlockButton tone="slate" onClick={() => {
+              const how = document.getElementById("how");
+              how?.scrollIntoView();
+              how?.focus({ preventScroll: true });
+            }}>
             How it works
           </BlockButton>
         </div>

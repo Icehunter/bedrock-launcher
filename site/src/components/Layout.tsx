@@ -53,7 +53,7 @@ function MobileMenu() {
             <Drawer.Body>
               <nav aria-label="Main" className="flex flex-col gap-1">
                 {NAV.map((n) => (
-                  <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}>
+                  <NavLink key={n.to} to={n.to} end={n.end} className={linkClass} onClick={state.close}>
                     {n.label}
                   </NavLink>
                 ))}

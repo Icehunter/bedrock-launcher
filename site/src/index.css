@@ -85,7 +85,8 @@ body { background: var(--background); color: var(--foreground); font-family: var
 }
 .block-btn:hover { filter: brightness(1.08); }
 .block-btn:active { padding-top: .75rem; padding-bottom: .625rem; box-shadow: inset 0 3px 0 var(--btn-edge); }
-.block-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.block-btn:focus-visible { outline: 3px solid var(--foreground); outline-offset: 2px; }
+.block-card .block-btn:focus-visible { outline-color: #fff; }
 .block-btn-green { --btn-face: var(--bl-green); --btn-edge: var(--bl-green-edge); --btn-light: var(--bl-green-light); }
 .block-btn-slate { --btn-face: var(--bl-slate); --btn-edge: var(--bl-slate-edge); --btn-light: var(--bl-slate-light); }
 

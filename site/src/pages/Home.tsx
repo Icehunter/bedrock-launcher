@@ -1,24 +1,22 @@
 import { Card } from "@heroui/react";
-import { Download, Gamepad2, Play } from "lucide-react";
-import type { ReactNode } from "react";
 import { BlockButton } from "../components/BlockButton";
 import { Hero, REQUIREMENTS } from "../components/Hero";
 import { Section } from "../components/Section";
 import { DOWNLOAD_URL, asset } from "../site";
 
-const STEPS: { icon: ReactNode; title: string; text: string }[] = [
+const STEPS: { art: string; title: string; text: string }[] = [
   {
-    icon: <Download size={28} aria-hidden="true" />,
+    art: "step-download",
     title: "Get the launcher",
     text: "Download the app and drag it to Applications. It is signed and notarized, so it opens without a warning.",
   },
   {
-    icon: <Gamepad2 size={28} aria-hidden="true" />,
+    art: "step-game",
     title: "Get the game",
     text: "Sign in to Google Play with the account that owns Minecraft, or import the copy you exported from your other Mac.",
   },
   {
-    icon: <Play size={28} aria-hidden="true" />,
+    art: "step-play",
     title: "Play",
     text: "Pick a profile and press Play. The game opens in its own window on your Mac.",
   },
@@ -58,9 +56,7 @@ export default function Home() {
             <li key={s.title}>
               <Card className="h-full">
                 <Card.Header className="flex flex-row items-center gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-[var(--bl-edge)] bg-[var(--bl-green)] text-white">
-                    {s.icon}
-                  </span>
+                  <img src={asset(`art/${s.art}.png`)} alt="" width={56} height={56} className="shrink-0" />
                   <Card.Title className="text-lg font-black">
                     {i + 1}. {s.title}
                   </Card.Title>

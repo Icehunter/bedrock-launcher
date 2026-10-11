@@ -9,7 +9,7 @@ import { RELEASES_URL } from "../site";
 import tested from "../../../tested-versions.json";
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
 const formatSize = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 

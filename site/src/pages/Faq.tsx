@@ -27,13 +27,7 @@ const ITEMS: { q: string; a: ReactNode }[] = [
   },
   {
     q: "What happens to my Google sign-in?",
-    a: (
-      <>
-        The launcher keeps the Google Play sign-in in <code>{DATA}/google</code>, a folder only your user
-        can open. It is used only to download the game. To sign out, open Settings and click Sign Out under
-        Google account, which deletes that folder.
-      </>
-    ),
+    a: "The launcher keeps your Google Play sign-in in your macOS Keychain, where only the launcher can read it unless you allow another app. It is used only to download the game. To sign out, open Settings and click Sign Out under Google account, which removes it from the Keychain.",
   },
   {
     q: "How do I get launcher updates?",
@@ -47,8 +41,9 @@ const ITEMS: { q: string; a: ReactNode }[] = [
     q: "How do I uninstall it?",
     a: (
       <>
-        Drag Bedrock Launcher from Applications to the Trash. To also remove game versions, profiles, worlds
-        and the Google sign-in, delete <code>{DATA}</code>. Back up any worlds you want to keep first.
+        Sign out of Google in Settings first, which removes the sign-in from your Keychain. Then drag Bedrock
+        Launcher from Applications to the Trash. To also remove game versions, profiles and worlds, delete{" "}
+        <code>{DATA}</code>. Back up any worlds you want to keep first.
       </>
     ),
   },
