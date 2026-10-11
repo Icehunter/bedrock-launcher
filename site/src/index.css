@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+@import "@heroui-pro/react/css";
+
+/* Launcher palette, from mac/Sources/BedrockLauncher/Theme.swift. */
+:root {
+  --bl-bg: #1e2229;
+  --bl-bar: #14171c;
+  --bl-edge: #0b0d10;
+  --bl-card: rgb(20 23 28 / 0.92);
+  --bl-field: #111318;
+  --bl-dim: #9aa4b2;
+  --bl-green: #3c8527;
+  --bl-green-edge: #2a5e1b;
+  --bl-green-light: #63a944;
+  --bl-slate: #2d333c;
+  --bl-slate-edge: #1a1e24;
+  --bl-slate-light: #3a414c;
+  --bl-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+.dark,
+[data-theme="dark"] {
+  --background: var(--bl-bg);
+  --foreground: #ffffff;
+  --surface: var(--bl-bar);
+  --surface-secondary: #252a33;
+  --muted: var(--bl-dim);
+  --border: var(--bl-edge);
+  --separator: #2d333c;
+  --accent: var(--bl-green-light);
+  --accent-foreground: #ffffff;
+  --default: var(--bl-slate);
+  --field-background: var(--bl-field);
+  --surface-foreground: #ffffff;
+  --default-foreground: #ffffff;
+  --accent-hover: #74b955;
+  --overlay: var(--bl-bar);
+  --overlay-foreground: #ffffff;
+  --link: var(--bl-green-light);
+}
+
+.light,
+[data-theme="light"] {
+  --background: #eef1f5;
+  --foreground: #14171c;
+  --surface: #ffffff;
+  --surface-secondary: #e3e7ed;
+  --muted: #545d6b;
+  --border: #c7cdd6;
+  --separator: #d5dae2;
+  --accent: var(--bl-green);
+  --accent-foreground: #ffffff;
+  --default: #e3e7ed;
+  --field-background: #ffffff;
+  --surface-foreground: #14171c;
+  --default-foreground: #14171c;
+  --accent-hover: #357622;
+  --overlay: #ffffff;
+  --overlay-foreground: #14171c;
+  --link: #2f6b1e;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+body { background: var(--background); color: var(--foreground); font-family: var(--bl-font); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.pixel { image-rendering: pixelated; }
+
+.skip-link {
+  position: absolute; left: 1rem; top: -4rem; z-index: 100;
+  padding: .5rem 1rem; border-radius: .5rem;
+  background: var(--accent); color: var(--accent-foreground);
+}
+.skip-link:focus { top: 1rem; }
