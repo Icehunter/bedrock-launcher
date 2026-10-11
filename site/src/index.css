@@ -73,3 +73,18 @@ body { background: var(--background); color: var(--foreground); font-family: var
   background: var(--accent); color: var(--accent-foreground);
 }
 .skip-link:focus { top: 1rem; }
+
+.block-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  min-height: 2.75rem; padding: .625rem 1.25rem .75rem;
+  font-weight: 900; font-size: .95rem; color: #fff; text-decoration: none;
+  border: 2px solid var(--bl-edge);
+  cursor: var(--cursor-interactive, pointer);
+  box-shadow: inset 0 3px 0 var(--btn-light), inset 0 -4px 0 var(--btn-edge);
+  background: var(--btn-face);
+}
+.block-btn:hover { filter: brightness(1.08); }
+.block-btn:active { padding-top: .75rem; padding-bottom: .625rem; box-shadow: inset 0 3px 0 var(--btn-edge); }
+.block-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.block-btn-green { --btn-face: var(--bl-green); --btn-edge: var(--bl-green-edge); --btn-light: var(--bl-green-light); }
+.block-btn-slate { --btn-face: var(--bl-slate); --btn-edge: var(--bl-slate-edge); --btn-light: var(--bl-slate-light); }
