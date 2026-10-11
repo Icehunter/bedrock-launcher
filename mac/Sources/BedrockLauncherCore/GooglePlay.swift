@@ -3,6 +3,7 @@ import Foundation
 /// One result line from `bedrock-gplay`.
 public enum GooglePlayEvent: Equatable, Sendable {
     case email(String)
+    case token(String)
     case versionCode(Int)
     case progress(name: String, done: Int64, total: Int64)
     case file(URL)
@@ -22,18 +23,41 @@ public enum GooglePlayError: Error, Equatable, LocalizedError {
 }
 
 /// Runs the `bedrock-gplay` helper, which does every Google Play call. The
-/// helper keeps the device identity and saved token in `state`.
+/// helper keeps the device identity in `state`; the Google account lives in
+/// `credentials` and reaches the helper on stdin.
 public struct GooglePlay: Sendable {
     public let helper: URL
     public let state: URL
+    public let credentials: any GoogleCredentials
 
-    public init(helper: URL, state: URL) {
+    public init(helper: URL, state: URL, credentials: any GoogleCredentials) {
         self.helper = helper
         self.state = state
+        self.credentials = credentials
     }
 
-    public var isSignedIn: Bool {
-        FileManager.default.fileExists(atPath: state.appendingPathComponent("playdl.conf").path)
+    public var isSignedIn: Bool { credentials.load() != nil }
+
+    /// Launchers up to 0.1.2 left the token in `state/playdl.conf`. It moves
+    /// to `credentials` and the file is deleted.
+    public func migrateLegacyFile() throws {
+        let file = state.appendingPathComponent("playdl.conf")
+        guard let text = try? String(contentsOf: file, encoding: .utf8) else { return }
+        var values: [String: String] = [:]
+        for line in text.split(separator: "\n") {
+            let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            if parts.count == 2 { values[parts[0]] = parts[1] }
+        }
+        if let token = values["user_token"], !token.isEmpty {
+            try credentials.save(GoogleAccount(email: values["user_email"] ?? "", token: token))
+        }
+        try FileManager.default.removeItem(at: file)
+    }
+
+    /// The account as the helper reads it on stdin.
+    private func accountInput() throws -> String {
+        guard let account = credentials.load() else { throw GooglePlayError.signInNeeded("not signed in") }
+        return account.email + "\n" + account.token + "\n"
     }
 
     public static func parse(_ line: String) -> GooglePlayEvent? {
@@ -41,6 +65,7 @@ public struct GooglePlay: Sendable {
         guard parts.count == 2 else { return nil }
         switch parts[0] {
         case "email": return .email(parts[1])
+        case "token": return .token(parts[1])
         case "version-code": return Int(parts[1]).map(GooglePlayEvent.versionCode)
         case "file": return .file(URL(fileURLWithPath: parts[1]))
         case "progress":
@@ -57,14 +82,22 @@ public struct GooglePlay: Sendable {
         try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true,
                                                 attributes: [.posixPermissions: 0o700])
         var email: String?
+        var token: String?
         try await run(["login", "--state", state.path], stdin: oauthToken + "\n") {
-            if case .email(let e) = $0 { email = e }
+            switch $0 {
+            case .email(let e): email = e
+            case .token(let t): token = t
+            default: break
+            }
         }
         guard let email else { throw GooglePlayError.failed("Google sign-in returned no account") }
+        guard let token, !token.isEmpty else { throw GooglePlayError.failed("Google sign-in returned no token") }
+        try credentials.save(GoogleAccount(email: email, token: token))
         return email
     }
 
     public func signOut() throws {
+        try credentials.delete()
         if FileManager.default.fileExists(atPath: state.path) {
             try FileManager.default.removeItem(at: state)
         }
@@ -72,7 +105,7 @@ public struct GooglePlay: Sendable {
 
     public func latestVersionCode() async throws -> Int {
         var code: Int?
-        try await run(["latest", "--state", state.path], stdin: nil) {
+        try await run(["latest", "--state", state.path], stdin: try accountInput()) {
             if case .versionCode(let c) = $0 { code = c }
         }
         guard let code else { throw GooglePlayError.failed("Google Play returned no version") }
@@ -84,12 +117,13 @@ public struct GooglePlay: Sendable {
     /// or cancel, `folder` is removed.
     public func download(versionCode: Int, to folder: URL,
                          progress: @escaping @Sendable (Int64, Int64) -> Void) async throws -> [URL] {
+        let input = try accountInput()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         var files: [URL] = []
         var parts: [String: (done: Int64, total: Int64)] = [:]
         do {
             try await run(["download", "--state", state.path, "--version-code", String(versionCode), "--out", folder.path],
-                          stdin: nil) { event in
+                          stdin: input) { event in
                 switch event {
                 case .progress(let name, let done, let total):
                     parts[name] = (done, total)

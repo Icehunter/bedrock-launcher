@@ -14,7 +14,7 @@ import Testing
     }
 
     /// A stand-in for bedrock-gplay that records its arguments and stdin.
-    func helper(_ body: String) throws -> GooglePlay {
+    func helper(_ body: String, account: GoogleAccount? = GoogleAccount(email: "kid@example.com", token: "aas_et/saved")) throws -> GooglePlay {
         let script = work.appendingPathComponent("bedrock-gplay")
         try """
         #!/bin/bash
@@ -24,7 +24,9 @@ import Testing
         \(body)
         """.write(to: script, atomically: true, encoding: .utf8)
         try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
-        return GooglePlay(helper: script, state: state)
+        let credentials = MemoryCredentials()
+        if let account { try credentials.save(account) }
+        return GooglePlay(helper: script, state: state, credentials: credentials)
     }
 
     func recorded(_ name: String) throws -> String {
@@ -41,7 +43,7 @@ import Testing
     }
 
     @Test func signInSendsTokenOnStdinOnly() async throws {
-        let play = try helper("touch \"\(state.path)/playdl.conf\"; echo 'email kid@example.com'")
+        let play = try helper("echo 'email kid@example.com'; echo 'token aas_et/new'", account: nil)
         #expect(!play.isSignedIn)
         let email = try await play.signIn(oauthToken: "oauth2_4/secret")
         #expect(email == "kid@example.com")
@@ -52,7 +54,7 @@ import Testing
     }
 
     @Test func stateFolderIsPrivate() async throws {
-        let play = try helper("echo 'email a@b.c'")
+        let play = try helper("echo 'email a@b.c'; echo 'token x'", account: nil)
         _ = try await play.signIn(oauthToken: "t")
         let mode = try fm.attributesOfItem(atPath: state.path)[.posixPermissions] as? Int
         #expect(mode == 0o700)
@@ -112,7 +114,7 @@ import Testing
     }
 
     @Test func signOutRemovesState() async throws {
-        let play = try helper("touch \"\(state.path)/playdl.conf\"; echo 'email a@b.c'")
+        let play = try helper("echo 'email a@b.c'; echo 'token x'", account: nil)
         _ = try await play.signIn(oauthToken: "t")
         try play.signOut()
         #expect(!fm.fileExists(atPath: state.path))

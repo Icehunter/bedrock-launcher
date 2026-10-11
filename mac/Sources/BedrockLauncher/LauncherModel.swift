@@ -90,8 +90,12 @@ final class LauncherModel: ObservableObject {
         } else {
             bundleContents = Bundle.main.bundleURL.appendingPathComponent("Contents", isDirectory: true)
         }
-        googlePlay = GooglePlay(helper: bundleContents.appendingPathComponent("MacOS/bedrock-gplay"), state: paths.google)
-        googleEmail = googlePlay.isSignedIn ? UserDefaults.standard.string(forKey: "googleEmail") ?? "" : nil
+        googlePlay = GooglePlay(helper: bundleContents.appendingPathComponent("MacOS/bedrock-gplay"),
+                                state: paths.google, credentials: KeychainCredentials())
+        try? googlePlay.migrateLegacyFile()
+        // Up to 0.1.2 the email was kept here; Keychain holds it now.
+        UserDefaults.standard.removeObject(forKey: "googleEmail")
+        googleEmail = googlePlay.credentials.load()?.email
         let bundled = (try? Data(contentsOf: bundleContents.appendingPathComponent("Resources/tested-versions.json"))) ?? Data()
         tested = TestedVersions.load(remote: nil, bundled: bundled)
         Task { [weak self] in
@@ -139,7 +143,6 @@ final class LauncherModel: ObservableObject {
                 defer { self.isSigningIn = false }
                 do {
                     let email = try await self.googlePlay.signIn(oauthToken: token)
-                    UserDefaults.standard.set(email, forKey: "googleEmail")
                     self.googleEmail = email
                     self.checkGooglePlayVersion()
                     then?()
@@ -157,7 +160,6 @@ final class LauncherModel: ObservableObject {
             errorMessage = "Could not sign out of Google: \(error.localizedDescription)"
             return
         }
-        UserDefaults.standard.removeObject(forKey: "googleEmail")
         googleEmail = nil
         playLatestCode = nil
         updatePlayBanner()

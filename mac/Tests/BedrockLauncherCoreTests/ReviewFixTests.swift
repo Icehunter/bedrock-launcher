@@ -91,7 +91,7 @@ import Testing
         let script = work.appendingPathComponent("bedrock-gplay")
         try "#!/bin/sh\necho 'error auth cannot open state' >&2\nexit 3\n".write(to: script, atomically: true, encoding: .utf8)
         try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
-        let play = GooglePlay(helper: script, state: work.appendingPathComponent("google"))
+        let play = GooglePlay(helper: script, state: work.appendingPathComponent("google"), credentials: MemoryCredentials())
         // Bigger than a pipe's buffer, so the write meets a closed pipe.
         let token = String(repeating: "t", count: 1 << 20)
         await #expect(throws: GooglePlayError.signInNeeded("cannot open state")) {
@@ -113,7 +113,9 @@ import Testing
         echo "file \(out.path)/base.apk"
         """.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
-        let play = GooglePlay(helper: script, state: work.appendingPathComponent("google"))
+        let credentials = MemoryCredentials()
+        try credentials.save(GoogleAccount(email: "a@b.c", token: "t"))
+        let play = GooglePlay(helper: script, state: work.appendingPathComponent("google"), credentials: credentials)
         let files = try await play.download(versionCode: 972605203, to: out) { _, _ in }
         #expect(files.map(\.lastPathComponent) == ["base.apk"])
     }
