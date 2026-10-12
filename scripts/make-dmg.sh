@@ -24,7 +24,17 @@ trap 'rm -rf "$STAGE"' EXIT
 ln -s /Applications "$STAGE/Applications"
 
 rm -f "$DMG"
-hdiutil create -quiet -volname "Bedrock Launcher" -srcfolder "$STAGE" -fs HFS+ -format UDZO "$DMG"
+RW="$STAGE.rw.dmg"
+hdiutil create -quiet -volname "Bedrock Launcher" -srcfolder "$STAGE" -fs HFS+ -format UDRW "$RW"
+# The disk icon is a hidden .VolumeIcon.icns plus a flag on the disk's top
+# folder. The flag can only be set while the image is mounted and writable.
+MOUNT="$(mktemp -d)"
+hdiutil attach -quiet -nobrowse -noverify -mountpoint "$MOUNT" "$RW"
+/bin/cp "$ROOT/mac/Sources/BedrockLauncher/Resources/AppIcon.icns" "$MOUNT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT"
+hdiutil detach -quiet "$MOUNT"
+hdiutil convert -quiet "$RW" -format UDZO -o "$DMG"
+rm -f "$RW"
 hdiutil verify -quiet "$DMG"
 
 if [ -n "${SIGN_IDENTITY:-}" ]; then
