@@ -73,13 +73,17 @@ struct VersionsPage: View {
         model.tested.versions.sorted { $0.versionCode > $1.versionCode }
     }
 
+    private func label(_ entry: TestedVersions.Entry) -> String {
+        entry.tested ? entry.name : "\(entry.name) (untested)"
+    }
+
     private var getTheGame: some View {
         Panel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Get the game")
                 if let first = choices.first {
                     Picker("Version", selection: Binding(get: { chosenCode ?? first.versionCode }, set: { chosenCode = $0 })) {
-                        ForEach(choices, id: \.versionCode) { Text($0.name).tag($0.versionCode) }
+                        ForEach(choices, id: \.versionCode) { Text(label($0)).tag($0.versionCode) }
                     }
                     .frame(maxWidth: 260)
                     Button("DOWNLOAD FROM GOOGLE PLAY") {

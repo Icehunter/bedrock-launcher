@@ -1,15 +1,26 @@
 import Foundation
 
-/// The game versions this launcher is known to run. Downloads only offer
-/// these, so a new Minecraft release does not break a working install.
+/// The game versions the launcher offers to download. Each entry is marked
+/// tested or untested; untested ones are offered too, with a warning. Only
+/// tested ones count as "newest" for the Google Play banner.
 public struct TestedVersions: Codable, Equatable, Sendable {
     public struct Entry: Codable, Equatable, Sendable {
         public let name: String
         public let versionCode: Int
+        public let tested: Bool
 
-        public init(name: String, versionCode: Int) {
+        public init(name: String, versionCode: Int, tested: Bool = true) {
             self.name = name
             self.versionCode = versionCode
+            self.tested = tested
+        }
+
+        /// Entries written before the flag existed count as tested.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            name = try c.decode(String.self, forKey: .name)
+            versionCode = try c.decode(Int.self, forKey: .versionCode)
+            tested = try c.decodeIfPresent(Bool.self, forKey: .tested) ?? true
         }
     }
 
@@ -22,8 +33,13 @@ public struct TestedVersions: Codable, Equatable, Sendable {
     /// The copy on the main branch, so the list can grow without a new launcher.
     public static let remote = URL(string: "https://raw.githubusercontent.com/Icehunter/bedrock-launcher/main/tested-versions.json")!
 
+    public var testedVersions: [Entry] {
+        versions.filter(\.tested)
+    }
+
+    /// The newest entry marked tested.
     public var newest: Entry? {
-        versions.max { $0.versionCode < $1.versionCode }
+        testedVersions.max { $0.versionCode < $1.versionCode }
     }
 
     public func entry(code: Int) -> Entry? {
@@ -40,9 +56,12 @@ public struct TestedVersions: Codable, Equatable, Sendable {
         try JSONDecoder().decode(TestedVersions.self, from: data)
     }
 
-    /// The fetched list when it reads, else the copy inside the app.
+    /// The fetched list, plus any entry only the copy inside the app has. The
+    /// fetched copy wins on a code both lists hold.
     public static func load(remote: Data?, bundled: Data) -> TestedVersions {
-        if let remote, let list = try? decode(remote) { return list }
-        return (try? decode(bundled)) ?? TestedVersions(versions: [])
+        let local = (try? decode(bundled))?.versions ?? []
+        guard let remote, let fetched = try? decode(remote) else { return TestedVersions(versions: local) }
+        let known = Set(fetched.versions.map(\.versionCode))
+        return TestedVersions(versions: fetched.versions + local.filter { !known.contains($0.versionCode) })
     }
 }

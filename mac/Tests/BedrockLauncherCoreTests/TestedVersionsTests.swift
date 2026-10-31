@@ -30,6 +30,12 @@ import Testing
         #expect(TestedVersions.load(remote: remote, bundled: bundled) == list)
     }
 
+    @Test func loadAddsBundledOnlyEntries() throws {
+        let remote = try JSONEncoder().encode(TestedVersions(versions: [list.versions[0]]))
+        let bundled = try JSONEncoder().encode(list)
+        #expect(TestedVersions.load(remote: remote, bundled: bundled).versions == list.versions)
+    }
+
     @Test func loadFallsBackToBundled() throws {
         let bundled = try JSONEncoder().encode(list)
         #expect(TestedVersions.load(remote: nil, bundled: bundled) == list)
@@ -42,6 +48,22 @@ import Testing
             .appendingPathComponent("tested-versions.json")
         let tested = try TestedVersions.decode(Data(contentsOf: file))
         #expect(tested.newest == .init(name: "1.26.52.3", versionCode: 972605203))
+    }
+
+    @Test func untestedEntryIsListedButNotNewest() throws {
+        let mixed = TestedVersions(versions: [
+            .init(name: "1.26.52.3", versionCode: 972605203),
+            .init(name: "1.26.60.4", versionCode: 972606004, tested: false),
+        ])
+        #expect(mixed.versions.count == 2)
+        #expect(mixed.testedVersions.map(\.name) == ["1.26.52.3"])
+        #expect(mixed.newest?.name == "1.26.52.3")
+        #expect(mixed.isNewerThanTested(972606004))
+    }
+
+    @Test func entryWithoutFlagIsTested() throws {
+        let old = Data(#"{"versions":[{"name":"1.26.52.3","versionCode":972605203}]}"#.utf8)
+        #expect(try TestedVersions.decode(old).versions[0].tested)
     }
 
     @Test func remoteIsTheMainBranchFile() {

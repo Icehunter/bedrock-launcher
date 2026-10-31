@@ -7,6 +7,7 @@ struct PlayPage: View {
     @State private var editing: Profile?
     @State private var linkedCount = 0
     @State private var errorCount = 0
+    @State private var showVersions = false
 
     private var data: URL { model.dataFolder(for: model.selectedProfile) }
 
@@ -138,6 +139,10 @@ struct PlayPage: View {
         }
     }
 
+    private func isTested(_ v: GameVersion) -> Bool {
+        model.tested.versions.first { $0.name == v.name }?.tested ?? false
+    }
+
     private var profileCard: some View {
         Panel {
             HStack(alignment: .center, spacing: 16) {
@@ -170,19 +175,75 @@ struct PlayPage: View {
         }
     }
 
+    /// PLAY starts the selected version. The arrow beside it picks the version and saves it with the profile.
     private var playButton: some View {
         let version = model.version(for: model.selectedProfile)
-        return Button { model.play() } label: {
-            VStack(spacing: 2) {
-                Text(model.isRunning ? "PLAYING" : "PLAY")
-                    .font(.system(size: 24, weight: .black))
-                Text(version.map { "MINECRAFT \($0.name)" } ?? "NO GAME INSTALLED")
-                    .font(.system(size: 10, weight: .bold))
-                    .opacity(0.85)
+        return HStack(spacing: 0) {
+            Button { model.play() } label: {
+                VStack(spacing: 2) {
+                    Text(model.isRunning ? "PLAYING" : "PLAY")
+                        .font(.system(size: 24, weight: .black))
+                    Text(version.map { "MINECRAFT \($0.name)" } ?? "NO GAME INSTALLED")
+                        .font(.system(size: 10, weight: .bold))
+                        .opacity(0.85)
+                }
+                .frame(width: 260, height: 46)
             }
-            .frame(width: 260)
+            .buttonStyle(ChunkyButtonStyle(kind: .green, verticalPadding: 7))
+            .disabled(version == nil || model.isRunning)
+
+            Button { showVersions.toggle() } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 14, weight: .black))
+                    .frame(width: 44, height: 46)
+            }
+            .buttonStyle(ChunkyButtonStyle(kind: .green, horizontalPadding: 0, verticalPadding: 7))
+            .disabled(model.isRunning)
+            .help("Choose the game version")
+            .popover(isPresented: $showVersions, arrowEdge: .top) { versionPopover }
         }
-        .buttonStyle(ChunkyButtonStyle(kind: .green, verticalPadding: 12))
-        .disabled(version == nil || model.isRunning)
+    }
+
+    /// The version list in the launcher's own panel style, opened from the arrow beside PLAY.
+    private var versionPopover: some View {
+        let chosen = model.selectedProfile.gameVersion
+        // An unpinned profile plays the newest installed version.
+        let current = chosen ?? model.versions.last?.name
+        return Panel {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionTitle(text: "Game version")
+                ForEach(model.versions.reversed(), id: \.name) { v in
+                    versionChoice(v.name, isTested(v) ? nil : "UNTESTED", selected: current == v.name) {
+                        model.selectGameVersion(v.name)
+                    }
+                }
+                if model.versions.isEmpty {
+                    Text("No game version installed yet.").font(.system(size: 13)).foregroundStyle(Theme.dimText)
+                }
+            }
+            .frame(width: 240, alignment: .leading)
+        }
+    }
+
+    private func versionChoice(_ title: String, _ note: String?, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            showVersions = false
+        } label: {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 14, weight: .heavy))
+                    if let note {
+                        Text(note).font(.system(size: 9, weight: .heavy)).opacity(0.85)
+                    }
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark").font(.system(size: 13, weight: .black))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(ChunkyButtonStyle(kind: selected ? .green : .slate, horizontalPadding: 14, verticalPadding: 8, fullWidth: true))
     }
 }

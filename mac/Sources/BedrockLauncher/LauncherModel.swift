@@ -262,8 +262,8 @@ final class LauncherModel: ObservableObject {
                 }
                 refresh()
                 let code = try? AndroidManifest.read(file: version.folder.appendingPathComponent("AndroidManifest.xml")).versionCode
-                if let code, tested.entry(code: code) == nil {
-                    noticeMessage = "Minecraft \(version.name) is not on the tested list. It may not run."
+                if let code, tested.entry(code: code)?.tested != true {
+                    noticeMessage = "Minecraft \(version.name) is not tested. It may not run."
                 }
             } catch is CancellationError {
             } catch GooglePlayError.signInNeeded {
@@ -341,6 +341,13 @@ final class LauncherModel: ObservableObject {
             return v
         }
         return versions.last
+    }
+
+    /// Remembers which game version the selected profile starts. nil means the newest installed.
+    func selectGameVersion(_ name: String?) {
+        var profile = selectedProfile
+        profile.gameVersion = name
+        saveProfile(profile)
     }
 
     func selectProfile(_ id: UUID) {
