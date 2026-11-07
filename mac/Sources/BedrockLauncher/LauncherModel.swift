@@ -64,6 +64,8 @@ final class LauncherModel: ObservableObject {
     /// Google Play's current version code, when it is newer than every tested one.
     @Published private(set) var playHasNewer: Int?
     private var playLatestCode: Int?
+    /// The tested list plus Google Play's current version, listed untested if new.
+    var downloadChoices: TestedVersions { tested.including(playCode: playLatestCode) }
     /// When the last game session ended and how; kept between launches.
     @Published private(set) var lastSession: (ended: Date, exitCode: Int32)?
 
@@ -302,6 +304,7 @@ final class LauncherModel: ObservableObject {
                 playLatestCode = nil
             }
             updatePlayBanner()
+            objectWillChange.send()
         }
     }
 

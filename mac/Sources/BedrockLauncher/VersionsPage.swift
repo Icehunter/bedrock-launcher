@@ -70,7 +70,7 @@ struct VersionsPage: View {
     }
 
     private var choices: [TestedVersions.Entry] {
-        model.tested.versions.sorted { $0.versionCode > $1.versionCode }
+        model.downloadChoices.versions.sorted { $0.versionCode > $1.versionCode }
     }
 
     private func label(_ entry: TestedVersions.Entry) -> String {

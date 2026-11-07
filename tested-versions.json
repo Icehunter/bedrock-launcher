@@ -1,6 +1,7 @@
 {
   "versions": [
     { "name": "1.26.52.3", "versionCode": 972605203 },
-    { "name": "1.26.60.4", "versionCode": 972606004, "tested": true }
+    { "name": "1.26.60.4", "versionCode": 972606004, "tested": true },
+    { "name": "1.26.62.1", "versionCode": 972606201, "tested": true }
   ]
 }

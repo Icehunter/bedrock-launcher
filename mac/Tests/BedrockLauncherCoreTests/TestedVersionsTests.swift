@@ -47,7 +47,7 @@ import Testing
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("tested-versions.json")
         let tested = try TestedVersions.decode(Data(contentsOf: file))
-        #expect(tested.newest == .init(name: "1.26.52.3", versionCode: 972605203))
+        #expect(tested.newest == .init(name: "1.26.62.1", versionCode: 972606201))
     }
 
     @Test func untestedEntryIsListedButNotNewest() throws {
@@ -68,5 +68,15 @@ import Testing
 
     @Test func remoteIsTheMainBranchFile() {
         #expect(TestedVersions.remote.absoluteString == "https://raw.githubusercontent.com/Icehunter/bedrock-launcher/main/tested-versions.json")
+    }
+}
+
+@Suite struct PlayVersionTests {
+    @Test func unlistedPlayVersionIsAddedUntested() {
+        let list = TestedVersions(versions: [.init(name: "1.26.60.4", versionCode: 972606004)])
+        let out = list.including(playCode: 972606105)
+        #expect(out.versions.last == .init(name: "1.26.61.5", versionCode: 972606105, tested: false))
+        #expect(list.including(playCode: 972606004) == list)
+        #expect(list.including(playCode: nil) == list)
     }
 }

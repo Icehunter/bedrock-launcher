@@ -52,6 +52,25 @@ public struct TestedVersions: Codable, Equatable, Sendable {
         return playCode > newest.versionCode
     }
 
+    /// The list plus Google Play's current version when the list lacks it, as
+    /// an untested entry, so a release nobody has listed yet can still be tried.
+    public func including(playCode: Int?) -> TestedVersions {
+        guard let playCode, entry(code: playCode) == nil else { return self }
+        let name = Self.guessName(code: playCode) ?? "build \(playCode)"
+        return TestedVersions(versions: versions + [Entry(name: name, versionCode: playCode, tested: false)])
+    }
+
+    /// 972606004 reads as 1.26.60.4: "97", minor, three-digit patch, two-digit build.
+    /// Only a label; the installed version's name comes from its manifest.
+    static func guessName(code: Int) -> String? {
+        let s = String(code)
+        guard s.count == 9, s.hasPrefix("97"),
+              let minor = Int(s.dropFirst(2).prefix(2)),
+              let patch = Int(s.dropFirst(4).prefix(3)),
+              let build = Int(s.suffix(2)) else { return nil }
+        return "1.\(minor).\(patch).\(build)"
+    }
+
     public static func decode(_ data: Data) throws -> TestedVersions {
         try JSONDecoder().decode(TestedVersions.self, from: data)
     }
