@@ -36,10 +36,38 @@ public enum ContentLog {
         return entries
     }
 
+    /// Hand-parsed: a regex per line is too slow on logs of tens of thousands of lines.
     private static func entry(from line: String) -> ContentLogEntry? {
-        let pattern = /^(\d{2}:\d{2}:\d{2})\[([^\]]*)\]\[([^\]]*)\]-(.*)$/
-        guard let m = line.wholeMatch(of: pattern) else { return nil }
-        return ContentLogEntry(time: String(m.1), level: String(m.3), area: String(m.2), message: String(m.4))
+        let u = Array(line.utf8.prefix(8))
+        guard u.count == 8, u[2] == 0x3A, u[5] == 0x3A,
+              [0, 1, 3, 4, 6, 7].allSatisfy({ (0x30...0x39).contains(u[$0]) }) else { return nil }
+        var rest = line.dropFirst(8)
+        guard rest.first == "[", let areaEnd = rest.firstIndex(of: "]") else { return nil }
+        let area = rest[rest.index(after: rest.startIndex)..<areaEnd]
+        rest = rest[rest.index(after: areaEnd)...]
+        guard rest.first == "[", let levelEnd = rest.firstIndex(of: "]") else { return nil }
+        let level = rest[rest.index(after: rest.startIndex)..<levelEnd]
+        rest = rest[rest.index(after: levelEnd)...]
+        guard rest.first == "-" else { return nil }
+        return ContentLogEntry(time: String(line.prefix(8)), level: String(level), area: String(area),
+                               message: String(rest.dropFirst()))
+    }
+
+    /// Identical level, area and message collapsed into one row with a count,
+    /// in order of first appearance.
+    public static func grouped(_ entries: [ContentLogEntry]) -> [(entry: ContentLogEntry, count: Int)] {
+        var index: [String: Int] = [:]
+        var out: [(entry: ContentLogEntry, count: Int)] = []
+        for e in entries {
+            let key = e.level + "\u{0}" + e.area + "\u{0}" + e.message
+            if let i = index[key] {
+                out[i].count += 1
+            } else {
+                index[key] = out.count
+                out.append((e, 1))
+            }
+        }
+        return out
     }
 
     private static func modified(_ url: URL) -> Date {

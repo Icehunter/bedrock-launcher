@@ -48,12 +48,14 @@ struct PlayPage: View {
     }
 
     private func reloadCounts() {
-        linkedCount = PackLinker.linkedPacks(dataFolder: data).count
-        if let file = ContentLog.latestFile(dataFolder: data),
-           let text = try? String(contentsOf: file, encoding: .utf8) {
-            errorCount = ContentLog.parse(text).filter { $0.level.lowercased() == "error" }.count
-        } else {
-            errorCount = 0
+        let folder = data
+        linkedCount = PackLinker.linkedPacks(dataFolder: folder).count
+        Task {
+            errorCount = await Task.detached(priority: .userInitiated) { () -> Int in
+                guard let file = ContentLog.latestFile(dataFolder: folder),
+                      let text = try? String(contentsOf: file, encoding: .utf8) else { return 0 }
+                return ContentLog.parse(text).filter { $0.level.lowercased() == "error" }.count
+            }.value
         }
     }
 

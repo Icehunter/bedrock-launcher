@@ -7,7 +7,8 @@ struct ContentPage: View {
     @EnvironmentObject var model: LauncherModel
     @State private var link = "minecraft://"
     @State private var linked: [LinkedPack] = []
-    @State private var errors: [ContentLogEntry] = []
+    @State private var errors: [(entry: ContentLogEntry, count: Int)] = []
+    @State private var errorTotal = 0
     @State private var logName: String?
 
     private var data: URL { model.dataFolder(for: model.selectedProfile) }
@@ -27,17 +28,25 @@ struct ContentPage: View {
         .onChange(of: model.isRunning) { _, running in if !running { reload() } }
     }
 
+    private static let shownRows = 200
+
     private func reload() {
         linked = PackLinker.linkedPacks(dataFolder: data)
-        if let file = ContentLog.latestFile(dataFolder: data),
-           let text = try? String(contentsOf: file, encoding: .utf8) {
-            logName = file.lastPathComponent
-            // Errors first, then warnings; the rest is noise for pack work.
-            let entries = ContentLog.parse(text).filter { ["error", "warning"].contains($0.level.lowercased()) }
-            errors = entries.sorted { ($0.level.lowercased() == "error" ? 0 : 1) < ($1.level.lowercased() == "error" ? 0 : 1) }
-        } else {
-            logName = nil
-            errors = []
+        let folder = data
+        Task {
+            // A run can log tens of thousands of lines; parse off the main thread.
+            let result = await Task.detached(priority: .userInitiated) { () -> (String, [(entry: ContentLogEntry, count: Int)], Int)? in
+                guard let file = ContentLog.latestFile(dataFolder: folder),
+                      let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+                let entries = ContentLog.parse(text).filter { ["error", "warning"].contains($0.level.lowercased()) }
+                // Errors first, then warnings; the rest is noise for pack work.
+                let grouped = ContentLog.grouped(entries)
+                    .sorted { ($0.entry.level.lowercased() == "error" ? 0 : 1) < ($1.entry.level.lowercased() == "error" ? 0 : 1) }
+                return (file.lastPathComponent, grouped, entries.count)
+            }.value
+            logName = result?.0
+            errors = result?.1 ?? []
+            errorTotal = result?.2 ?? 0
         }
     }
 
@@ -178,15 +187,26 @@ struct ContentPage: View {
                 if logName != nil && errors.isEmpty {
                     Text("No errors or warnings in the last run.").foregroundStyle(Theme.dimText)
                 }
-                ForEach(errors.indices, id: \.self) { i in
-                    let e = errors[i]
+                if errorTotal > 0 {
+                    Text("\(errorTotal) lines, \(errors.count) distinct. Repeats are counted, not listed.")
+                        .font(.system(size: 11)).foregroundStyle(Theme.dimText)
+                }
+                ForEach(errors.prefix(Self.shownRows).indices, id: \.self) { i in
+                    let e = errors[i].entry
                     HStack(alignment: .top, spacing: 8) {
+                        if errors[i].count > 1 {
+                            Text("×\(errors[i].count)").font(.system(size: 11, weight: .bold, design: .monospaced))
+                        }
                         Text(e.time).font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.dimText)
                         Text("[\(e.area)]").font(.system(size: 11, weight: .semibold))
                         Text(e.message).font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(e.level.lowercased() == "error" ? Theme.errorText : Theme.warningText)
                             .textSelection(.enabled)
                     }
+                }
+                if errors.count > Self.shownRows {
+                    Text("\(errors.count - Self.shownRows) more distinct entries not shown.")
+                        .font(.system(size: 11)).foregroundStyle(Theme.dimText)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

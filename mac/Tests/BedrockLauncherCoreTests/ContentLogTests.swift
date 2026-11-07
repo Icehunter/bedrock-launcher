@@ -50,3 +50,11 @@ import Testing
         #expect(ContentLog.latestFile(dataFolder: data) == nil)
     }
 }
+
+@Suite struct ContentLogGroupingTests {
+    @Test func repeatsCollapseIntoACount() {
+        let text = "11:51:34[Texture][error]-bad\n11:51:35[Texture][error]-bad\n11:51:36[Texture][warn]-bad\n"
+        let g = ContentLog.grouped(ContentLog.parse(text))
+        #expect(g.map(\.count) == [2, 1])
+    }
+}
