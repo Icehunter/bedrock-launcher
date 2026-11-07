@@ -282,6 +282,18 @@ int run(int argc, char** argv) {
     auto dd = resp.payload().deliveryresponse().appdeliverydata();
     if (dd.downloadauthcookie_size() == 0)
         throw std::runtime_error("Google Play did not offer version " + std::to_string(version_code));
+    // Announce every file's size first so the launcher's bar has the full total
+    // from the start. Curl counts the bytes on the wire, so use the gzipped size
+    // when the file is sent gzipped.
+    auto announce = [](std::string const& name, bool gzipped, long long plain, long long zipped) {
+        long long size = gzipped ? zipped : plain;
+        if (size > 0)
+            line("progress " + name + " 0 " + std::to_string(size));
+    };
+    announce("base.apk", dd.has_gzippeddownloadurl(), dd.downloadsize(), dd.gzippeddownloadsize());
+    for (auto&& split : dd.splitdeliverydata())
+        announce("split_" + split.id() + ".apk", split.has_gzippeddownloadurl(), split.downloadsize(),
+                 split.gzippeddownloadsize());
     download_part(s, dd, dd.downloadauthcookie(0), "base.apk", out);
     for (auto&& split : dd.splitdeliverydata())
         download_part(s, split, dd.downloadauthcookie(0), "split_" + split.id() + ".apk", out);
