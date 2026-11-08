@@ -41,6 +41,17 @@ page, open it and drag Bedrock Launcher to Applications. Releases are signed wit
 and notarized by Apple, so macOS opens them without a warning. It needs an Apple Silicon Mac with
 macOS 15 or newer.
 
+## Vibrant Visuals
+
+Select Vibrant Visuals in Minecraft's video settings. The launcher checks the
+Apple Silicon GPU and ANGLE Vulkan graphics support before supplying a device-tier
+rule to the game. Installed game files stay unchanged. Fancy remains available.
+
+The graphics checks require OpenGL ES 3.1, framebuffer fetch, cube-map arrays,
+and at least 256 compute invocations per workgroup. Visual checks
+cover M5 Pro with Bedrock 1.26.60.4 and 1.26.62.1; other Apple Silicon Macs use the
+same capability checks but have not all had a visual check.
+
 ## Getting the source
 
 ```sh

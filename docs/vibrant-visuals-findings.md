@@ -2,17 +2,19 @@
 
 ## Status
 
-Bedrock 1.26.62.1 renders water and Snell's window correctly with the GL ABI
-adapter on Apple M5 Pro. The same build passes a visual check in Fancy mode.
-The tested path is ANGLE Vulkan, MoltenVK, Metal.
+Bedrock 1.26.60.4 and 1.26.62.1 render water correctly with the GL ABI adapter
+on Apple M5 Pro. Bedrock 1.26.62.1 also passes checks for Snell's window and
+Fancy mode. The tested path is ANGLE Vulkan, MoltenVK, Metal.
 
-These runs use two diagnostic settings in addition to the client changes:
+The client reads GL capabilities on the window thread and supplies an in-memory
+GPU tier rule when the game reads assets/tiers.bin. Normal launches of both
+1.26.60.4 and 1.26.62.1 pass VV and Fancy checks using the original installs,
+without an asset overlay,
+debugger, injected tracing, or texture-format correction. The original game
+library and tier file hashes are unchanged.
 
-- A separate game asset view assigns Apple M5 Pro to device tier 4.
-- An LLDB script keeps RG16 and RGBA16 texture format entries normalized.
-
-A normal launch without these settings is not verified. The ABI fix is suitable
-for the client, but automatic VV support still needs the tier and format handling.
+The support policy covers Apple Silicon M-series GPUs that meet the graphics
+requirements. Visual checks on one GPU do not establish performance on every Mac.
 
 ## GL argument layout
 
@@ -49,8 +51,16 @@ on both sides of the call.
 ## Device tier and texture formats
 
 The game's default device tier is 3. Its VV gate requires a tier above 3.
-`tools/gltrace/create-tier-overlay.py` creates a separate asset view with a GPU
-rule. It leaves the original install untouched.
+The client supplies a tier of at least 4 for the detected Apple M-series GPU
+on its ANGLE Vulkan path for Bedrock 1.26.10 and later. It requires ES 3.1,
+framebuffer fetch, cube-map arrays and at least 256 compute invocations per
+workgroup. Existing higher tiers and unrelated GPU entries are preserved.
+Unknown hosts, invalid base64 and unsupported JSON schemas retain the original
+asset bytes. No GL calls occur on the asset worker thread.
+
+The policy has 53 offline checks, including native GL query mocks and invalid
+asset handling. The 11 GL ABI checks and tier-policy checks run in the client
+build script, which CI also uses.
 
 The game's GLES setup maps normalized RG16 and RGBA16 rows to integer formats.
 Float shader outputs then target integer attachments. The opt-in
@@ -60,8 +70,8 @@ type and leaves true integer rows alone. The script checks the expected code
 before changing memory and is specific to Bedrock 1.26.62.1.
 
 The format correction removes the shader-output format warning. On its own,
-it does not fix the visible water and texture errors. The visual pass uses
-both the format correction and the ABI adapter.
+it does not fix the visible water and texture errors. Water passes visual checks on both tested versions with the ABI adapter alone.
+The production path does not apply this texture-format correction.
 
 ## Driver findings
 

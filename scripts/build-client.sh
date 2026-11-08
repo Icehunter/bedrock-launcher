@@ -62,9 +62,13 @@ cmake -S "$SRC" -B "$BUILD" -G Ninja \
   -DUSE_GAMECONTROLLERDB=ON \
   -DUSE_OWN_CURL=ON \
   -DENABLE_DEV_PATHS=OFF \
+  -DCLIENT_BUILD_GL_ANDROID_ABI_TESTS=ON \
+  -DCLIENT_BUILD_VIBRANT_VISUALS_TESTS=ON \
   -DOPENSSL_ROOT_DIR="$OPENSSL" \
   -DOPENSSL_USE_STATIC_LIBS=TRUE
-cmake --build "$BUILD" --target mcpelauncher-client gamecontrollerdb
+cmake --build "$BUILD" --target mcpelauncher-client gamecontrollerdb gl-android-abi-test vibrant-visuals-test
+"$BUILD/mcpelauncher-client/gl-android-abi-test"
+"$BUILD/mcpelauncher-client/vibrant-visuals-test"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/lib/arm64-v8a" "$OUT/lib/native/arm64-v8a"
