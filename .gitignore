@@ -5,3 +5,10 @@ build/bedrock-launcher.html
 out/
 .cache/
 .superpowers/
+
+# Local graphics diagnostics
+/tools/gltrace/*.dylib
+/tools/gltrace/__pycache__/
+/tools/render-tests/render-tests*
+/tools/render-tests/*.dSYM/
+/tools/render-tests/vkfmt
