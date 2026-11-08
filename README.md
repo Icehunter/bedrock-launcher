@@ -108,6 +108,21 @@ settings:
 scripts/run-bundle.sh out/bundle/Contents /path/to/game /path/to/data
 ```
 
+## Release notes
+
+Version tags publish a signed app from the matching successful main build.
+Release notes list the commits since the nearest earlier stable version tag,
+including changes pushed without a pull request.
+
+To preview the notes before tagging:
+
+```sh
+python3 scripts/release-notes.py --ref HEAD \
+  --repository Icehunter/bedrock-launcher --output out/release-notes.md
+```
+
+The script needs full git history and tags. It leaves tags and releases unchanged.
+
 ## Keeping up with upstream
 
 ```sh

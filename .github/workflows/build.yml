@@ -22,6 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Release notes tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_release_notes.py'
+
       # ANGLE is cloned without its own submodules; gclient fetches what it needs.
       - name: Submodules
         run: |
@@ -128,6 +131,14 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Release notes
+        run: |
+          mkdir -p out
+          python3 scripts/release-notes.py --ref "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY" --output out/release-notes.md
 
       - name: App from main
         env:
@@ -184,7 +195,7 @@ jobs:
         run: |
           /bin/cp out/Bedrock-Launcher.dmg "out/Bedrock-Launcher-${GITHUB_REF_NAME#v}.dmg"
           gh release create "$GITHUB_REF_NAME" "out/Bedrock-Launcher-${GITHUB_REF_NAME#v}.dmg" \
-            --verify-tag --title "Bedrock Launcher ${GITHUB_REF_NAME#v}" --generate-notes
+            --verify-tag --title "Bedrock Launcher ${GITHUB_REF_NAME#v}" --notes-file out/release-notes.md
 
       - name: Remove signing keychain
         if: always()
